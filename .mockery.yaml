@@ -1,0 +1,192 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+filename: "mock_{{.InterfaceName}}.go"
+mockname: "Mock{{.InterfaceName}}"
+packages:
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/core:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Core_test.go"
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockCoreCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockCoreChargePointHandler"
+
+
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/certificates:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Certificates_test.go"
+
+    interfaces:
+      ChargePointHandler:
+        config:
+          mockname: "MockCertificatesChargePointHandler"
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/logging:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Logging_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockLogCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockLogChargePointHandler"
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/extendedtriggermessage:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_ExtendedTriggerMessage_test.go"
+
+    interfaces:
+      ChargePointHandler:
+        config:
+          mockname: "MockExtendedTriggerMessageChargePointHandler"
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Firmware_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockFirmwareCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockFirmwareChargePointHandler"
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/localauth:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_LocalAuthList_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockLocalAuthListCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockLocalAuthListChargePointHandler"
+
+
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/remotetrigger:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_RemoteTrigger_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockRemoteTriggerCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockRemoteTriggerChargePointHandler"
+
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/reservation:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Reservation_test.go"
+    interfaces:
+
+      CentralSystemHandler:
+        config:
+          mockname: "MockReservationCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockReservationChargePointHandler"
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_SecureFirmware_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockSecureFirmwareCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockSecureFirmwareChargePointHandler"
+
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/security:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Security_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockSecurityCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockSecurityChargePointHandler"
+
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6/smartcharging:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_SmartCharging_test.go"
+
+    interfaces:
+      CentralSystemHandler:
+        config:
+          mockname: "MockSmartChargingCentralSystemHandler"
+
+      ChargePointHandler:
+        config:
+          mockname: "MockSmartChargingChargePointHandler"
+
+
+  github.com/lorenzodonini/ocpp-go/ocpp1.6:
+    config:
+      dir: "ocpp1.6_test"
+      outpkg: "ocpp16_test"
+      filename: "mock_Ocpp16_test.go"
+
+    interfaces:
+      ChargePointConnection:
+      ChargePoint:
+      CentralSystem:
+
+  github.com/lorenzodonini/ocpp-go/ocppj:
+    interfaces:
+      ServerQueueMap:
+      RequestQueue:
+
+  github.com/lorenzodonini/ocpp-go/ws:
+    interfaces:
+      WsClient:
+      WsServer:
+      Channel:
