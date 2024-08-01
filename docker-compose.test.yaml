@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  toxiproxy:
+    image: shopify/toxiproxy:2.1.4
+    hostname: toxiproxy
+
+  test:
+    image: cimg/go:1.22.5
+    # The tests might require permissions to write to coverage out files.
+    # If you encounter issues with permissions, you can try running the container as root.
+    # user: root
+    working_dir: /etc/ocpp-go
+    environment:
+      - TOXIPROXY_HOST=toxiproxy
+      - TOXIPROXY_PORT=8474
+    depends_on:
+      - toxiproxy
+    command:
+      - /bin/bash
+      - -c
+      - |
+        go test ./ws ./ocppj -v -covermode=count -coverprofile=coverage.out
+        go test -v -covermode=count -coverprofile=ocpp16.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp1.6/... github.com/lorenzodonini/ocpp-go/ocpp1.6_test
+        go test -v -covermode=count -coverprofile=ocpp201.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp2.0.1/... github.com/lorenzodonini/ocpp-go/ocpp2.0.1_test
+    volumes:
+      - .:/etc/ocpp-go:rw
