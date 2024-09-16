@@ -84,5 +84,5 @@ type CertificateHashData struct {
 	HashAlgorithm  HashAlgorithmType `json:"hashAlgorithm" validate:"required,hashAlgorithm"`
 	IssuerNameHash string            `json:"issuerNameHash" validate:"required,max=128"`
 	IssuerKeyHash  string            `json:"issuerKeyHash" validate:"required,max=128"`
-	SerialNumber   string            `json:"serialNumber" validate:"required,max=20"`
+	SerialNumber   string            `json:"serialNumber" validate:"required,max=40"`
 }
