@@ -27,7 +27,16 @@ type NetworkTestSuite struct {
 }
 
 func (s *NetworkTestSuite) SetupSuite() {
-	client := toxiproxy.NewClient("localhost:8474")
+	connection := "localhost:8474"
+	// Check environment variables for toxiproxy connection
+	// Allows testing with toxiproxy in Docker
+	host := os.Getenv("TOXIPROXY_HOST")
+	port := os.Getenv("TOXIPROXY_PORT")
+	if host != "" && port != "" {
+		connection = fmt.Sprintf("%s:%s", host, port)
+	}
+
+	client := toxiproxy.NewClient(connection)
 	s.proxyPort = 8886
 	// Proxy listens on 8886 and upstreams to 8887 (where ocpp server is actually listening)
 	oldProxy, err := client.Proxy("ocpp")
