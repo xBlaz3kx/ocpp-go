@@ -1,6 +1,8 @@
 package ocpp16_test
 
 import (
+	"strings"
+
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/certificates"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/extendedtriggermessage"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware"
@@ -106,4 +108,14 @@ func (m *MockChargePointSecureFirmwareUpdateHandler) OnSignedUpdateFirmware(requ
 	args := m.MethodCalled("OnSignedUpdateFirmware", request)
 	conf := args.Get(0).(*securefirmware.SignedUpdateFirmwareResponse)
 	return conf, args.Error(1)
+}
+
+// Generates a new dummy string of the specified length.
+func newLongString(length int) string {
+	reps := length / 32
+	s := strings.Repeat("................................", reps)
+	for i := len(s); i < length; i++ {
+		s += "."
+	}
+	return s
 }

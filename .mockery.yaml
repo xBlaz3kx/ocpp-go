@@ -4,7 +4,6 @@ outpkg: mocks
 filename: "mock_{{.InterfaceName}}.go"
 mockname: "Mock{{.InterfaceName}}"
 packages:
-
   github.com/lorenzodonini/ocpp-go/ocpp1.6/core:
     config:
       dir: "ocpp1.6_test"
@@ -18,8 +17,6 @@ packages:
       ChargePointHandler:
         config:
           mockname: "MockCoreChargePointHandler"
-
-
 
   github.com/lorenzodonini/ocpp-go/ocpp1.6/certificates:
     config:
