@@ -1,0 +1,73 @@
+name: Test
+on: [ push, pull_request, workflow_dispatch ]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    name: Unit tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Install Go
+        uses: actions/setup-go@v5.1.0
+        with:
+          go-version: ^1.18
+          cache: true
+      - name: Run tests
+        run: |
+          go test -v -covermode=count -coverprofile=ocpp16.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp1.6/... github.com/lorenzodonini/ocpp-go/ocpp1.6_test
+          go test -v -covermode=count -coverprofile=ocpp201.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp2.0.1/... github.com/lorenzodonini/ocpp-go/ocpp2.0.1_test
+          sed '1d;$d' ocpp16.out >> coverage.out
+          sed '1d;$d' ocpp201.out >> coverage.out
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit_coverage
+          path: ./coverage.out
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Download coverage from unit tests
+        uses: actions/download-artifact@v4
+        with:
+          name: unit_coverage
+      - name: Run integration tests
+        run: |
+          docker compose -f docker-compose.test.yaml up integration_test
+      - name: Wait for integration_test to finish
+        run: |
+          while [ "$(docker inspect -f '{{.State.Running}}' $(docker compose -f docker-compose.test.yaml ps -q integration_test))" == "true" ]; do
+            echo "Waiting for integration_test to finish..."
+            sleep 5
+          done
+      - name: Merge coverage
+        run: |
+          sed '1d;$d' integration_coverage.out >> coverage.out
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ./coverage.out
+
+  publish_coverage:
+    runs-on: ubuntu-latest
+    # Unit and integration tests must be run before publishing coverage
+    needs: [ unit, integration ]
+    name: Publish coverage
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest
+      - name: Download coverage from tests
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+      - name: Publish
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: goveralls -coverprofile=coverage.out -service=github
