@@ -1,6 +1,7 @@
 name: Autogenerate
 on:
-  # workflow_dispatch:
+  # Note: When testing with nektos/act, the workflow_dispatch does not work as of version 0.2.63
+  workflow_dispatch:
 
   pull_request:
     paths-ignore:
@@ -18,8 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        #with:
-        #  ref: ${{ github.ref }}
+        with:
+          ref: ${{ github.ref }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
