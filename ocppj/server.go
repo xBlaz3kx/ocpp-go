@@ -73,6 +73,13 @@ func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler Ser
 	dispatcher.SetNetworkServer(wsServer)
 	dispatcher.SetPendingRequestState(stateHandler)
 
+	meterProvider := otel.GetMeterProvider()
+	metrics, err := newOcppMetrics(meterProvider, "")
+	if err != nil {
+		log.Error(errors.Wrapf(err, "failed to create OCPP metrics"))
+		return nil
+	}
+
 	// Create server and add profiles
 	s := Server{
 		Endpoint:     Endpoint{},
