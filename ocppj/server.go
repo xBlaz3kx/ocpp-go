@@ -77,6 +77,7 @@ func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler Ser
 	metrics, err := newOcppMetrics(meterProvider, "")
 	if err != nil {
 		log.Error(errors.Wrapf(err, "failed to create OCPP metrics"))
+		// todo improve error handling
 		return nil
 	}
 
