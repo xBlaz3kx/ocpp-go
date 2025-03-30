@@ -1,6 +1,7 @@
 package ocppj
 
 import (
+	"errors"
 	"fmt"
 
 	"gopkg.in/go-playground/validator.v9"
@@ -13,7 +14,7 @@ import (
 // During message exchange, the two roles may be reversed (depending on the message direction), but a client struct remains associated to a charge point/charging station.
 type Client struct {
 	Endpoint
-	client                ws.WsClient
+	client                ws.Client
 	Id                    string
 	requestHandler        func(request ocpp.Request, requestId string, action string)
 	responseHandler       func(response ocpp.Response, requestId string)
@@ -35,7 +36,7 @@ type Client struct {
 //
 // The wsClient parameter cannot be nil. Refer to the ws package for information on how to create and
 // customize a websocket client.
-func NewClient(id string, wsClient ws.WsClient, dispatcher ClientDispatcher, stateHandler ClientState, profiles ...*ocpp.Profile) *Client {
+func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, stateHandler ClientState, profiles ...*ocpp.Profile) *Client {
 	endpoint := Endpoint{}
 	if wsClient == nil {
 		panic("wsClient parameter cannot be nil")
@@ -331,11 +332,12 @@ func (c *Client) HandleFailedResponseError(requestID string, err error, featureN
 	switch err.(type) {
 	case validator.ValidationErrors:
 		// Validation error
-		validationErr := err.(validator.ValidationErrors)
-		responseErr = errorFromValidation(validationErr, requestID, featureName)
+		var validationErr validator.ValidationErrors
+		errors.As(err, &validationErr)
+		responseErr = errorFromValidation(c, validationErr, requestID, featureName)
 	case *ocpp.Error:
 		// Internal OCPP error
-		responseErr = err.(*ocpp.Error)
+		errors.As(err, &responseErr)
 	case error:
 		// Unknown error
 		responseErr = ocpp.NewError(GenericError, err.Error(), requestID)
