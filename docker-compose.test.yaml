@@ -18,12 +18,13 @@ services:
       - |
         set -e
         set -o pipefail
-        go test -v -covermode=count -coverprofile=coverage.out ./ocppj
-        go test -v -covermode=count -coverprofile=ocpp-coverage.out ./ocpp
-        go test -v -covermode=count -coverprofile=ocpp-coverage.out ./ocpp
-        go test -v -covermode=count -coverprofile=ocpp16.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp1.6/... github.com/lorenzodonini/ocpp-go/ocpp1.6/config_manager
-        go test -v -covermode=count -coverprofile=ocpp201.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp2.0.1/... github.com/lorenzodonini/ocpp-go/ocpp2.0.1_test
+        go test -race -v -covermode=atomic -coverprofile=coverage.out ./ocppj
+        go test -race -v -covermode=atomic -coverprofile=ocpp-coverage.out ./ocpp
+        go test -race -v -covermode=atomic -coverprofile=ocpp16-manager.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp1.6/... github.com/lorenzodonini/ocpp-go/ocpp1.6/config_manager
+        go test -race -v -covermode=atomic -coverprofile=ocpp16.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp1.6/... github.com/lorenzodonini/ocpp-go/ocpp1.6
+        go test -race -v -covermode=atomic -coverprofile=ocpp201.out -coverpkg=github.com/lorenzodonini/ocpp-go/ocpp2.0.1/... github.com/lorenzodonini/ocpp-go/ocpp2.0.1_test
         sed '1d;$d' ocpp-coverage.out >> coverage.out
+        sed '1d;$d' ocpp16-manager.out >> coverage.out
         sed '1d;$d' ocpp16.out >> coverage.out
         sed '1d;$d' ocpp201.out >> coverage.out
 
@@ -46,6 +47,6 @@ services:
       - |
         set -e
         set -o pipefail
-        go test ./ws -v -covermode=count -coverprofile=integration_coverage.out
+        go test -race ./ws -v -covermode=atomic -coverprofile=integration_coverage.out
     volumes:
       - .:/etc/ocpp-go:rw
