@@ -46,7 +46,7 @@ type AuthorizeRequest struct {
 // In case the request was invalid, or couldn't be processed, an error will be sent instead.
 type AuthorizeResponse struct {
 	CertificateStatus     AuthorizeCertificateStatus `json:"certificateStatus,omitempty" validate:"omitempty,authorizeCertificateStatus21"`
-	AllowedEnergyTransfer []types.EnergyTransferMode `json:"allowedEnergyTransfer,omitempty" validate:"omitempty,energyTransferMode"`
+	AllowedEnergyTransfer []types.EnergyTransferMode `json:"allowedEnergyTransfer,omitempty" validate:"omitempty,dive,energyTransferMode21"`
 	IdTokenInfo           types.IdTokenInfo          `json:"idTokenInfo" validate:"required"`
 	Tariff                *types.Tariff              `json:"tariff,omitempty" validate:"omitempty,dive"`
 }

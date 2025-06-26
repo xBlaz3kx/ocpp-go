@@ -63,7 +63,7 @@ func isValidIdToken(sl validator.StructLevel) {
 }
 
 type AdditionalInfo struct {
-	AdditionalIdToken string `json:"additionalIdToken" validate:"required,max=36"`
+	AdditionalIdToken string `json:"additionalIdToken" validate:"required,max=255"`
 	Type              string `json:"type" validate:"required,max=50"`
 }
 
@@ -95,6 +95,7 @@ type IdTokenInfo struct {
 	ChargingPriority    int                 `json:"chargingPriority,omitempty" validate:"min=-9,max=9"`
 	Language1           string              `json:"language1,omitempty" validate:"max=8"`
 	Language2           string              `json:"language2,omitempty" validate:"max=8"`
+	EvseId              []int               `json:"evseId,omitempty" validate:"omitempty,dive,gte=0"`
 	GroupIdToken        *GroupIdToken       `json:"groupIdToken,omitempty"`
 	PersonalMessage     *MessageContent     `json:"personalMessage,omitempty"`
 }

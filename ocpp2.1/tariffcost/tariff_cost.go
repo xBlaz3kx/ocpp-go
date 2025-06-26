@@ -5,6 +5,12 @@ import "github.com/lorenzodonini/ocpp-go/ocpp"
 
 // Needs to be implemented by a CSMS for handling messages part of the OCPP 2.1 Tariff and cost profile.
 type CSMSHandler interface {
+	// OnNotifySettlement is called on the CSMS whenever a NotifySettlementRequest is received from a charging station.
+	OnNotifySettlement(chargingStationID string, request *NotifySettlementRequest) (response *NotifySettlementResponse, err error)
+	// OnNotifyWebPaymentStarted is called on the CSMS whenever a NotifyWebPaymentStartedRequest is received from a charging station.
+	OnNotifyWebPaymentStarted(chargingStationID string, request *NotifyWebPaymentStartedRequest) (response *NotifyWebPaymentStartedResponse, err error)
+	// OnVatNumberValidation is called on the CSMS whenever a VatNumberValidationRequest is received from a charging station.
+	OnVatNumberValidation(chargingStationID string, request *VatNumberValidationRequest) (response *VatNumberValidationResponse, err error)
 }
 
 // Needs to be implemented by Charging stations for handling messages part of the OCPP 2.1 Tariff and cost profile.
@@ -25,9 +31,12 @@ const ProfileName = "TariffCost"
 
 var Profile = ocpp.NewProfile(
 	ProfileName,
-	CostUpdatedFeature{},
-	SetDefaultTariffFeature{},
-	GetTariffsFeature{},
-	ClearTariffsFeature{},
 	ChangeTransactionTariffFeature{},
+	ClearTariffsFeature{},
+	CostUpdatedFeature{},
+	GetTariffsFeature{},
+	NotifySettlementFeature{},
+	NotifyWebPaymentStartedFeature{},
+	SetDefaultTariffFeature{},
+	VatNumberValidationFeature{},
 )

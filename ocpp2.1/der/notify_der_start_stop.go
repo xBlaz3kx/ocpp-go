@@ -1,8 +1,9 @@
 package der
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
 	"reflect"
+
+	"github.com/lorenzodonini/ocpp-go/ocpp2.1/types"
 )
 
 // -------------------- NotifyDERStartStop (CSMS -> CS) --------------------
@@ -14,7 +15,7 @@ type NotifyDERStartStopRequest struct {
 	ControlId     string         `json:"controlId" validate:"required,max=36"`
 	Started       bool           `json:"started" validate:"required"` // Indicates whether the DER is started or stopped.
 	Timestamp     types.DateTime `json:"timestamp" validate:"required"`
-	SupersededIds []string       `json:"supersededIds,omitempty" validate:"omitempty,max=24"`
+	SupersededIds []string       `json:"supersededIds,omitempty" validate:"omitempty,max=24,dive,max=36"`
 }
 
 // This field definition of the NotifyDERStartStopResponse

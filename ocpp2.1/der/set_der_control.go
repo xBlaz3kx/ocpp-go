@@ -26,8 +26,8 @@ type SetDERControlRequest struct {
 // This field definition of the SetDERControlResponse
 type SetDERControlResponse struct {
 	Status         DERControlStatus `json:"status" validate:"required,derControlStatus"`
-	SuperseededIds []string         `json:"superseededIds,omitempty" validate:"omitempty,max=24"`
-	StatusInfo     types.StatusInfo `json:"statusInfo,omitempty" validate:"omitempty"`
+	SupersededIds []string          `json:"supersededIds,omitempty" validate:"omitempty,max=24,dive,max=36"`
+	StatusInfo    *types.StatusInfo `json:"statusInfo,omitempty" validate:"omitempty,dive"`
 }
 
 type SetDERControlFeature struct{}
@@ -53,7 +53,7 @@ func (c SetDERControlResponse) GetFeatureName() string {
 }
 
 // Creates a new SetDERControlRequest, containing all required fields. Optional fields may be set afterwards.
-func NewSetDERControlResponseRequest(isDefault bool, controlId string, controlType DERControl) *SetDERControlRequest {
+func NewSetDERControlRequest(isDefault bool, controlId string, controlType DERControl) *SetDERControlRequest {
 	return &SetDERControlRequest{
 		IsDefault:   isDefault,
 		ControlID:   controlId,
@@ -62,7 +62,7 @@ func NewSetDERControlResponseRequest(isDefault bool, controlId string, controlTy
 }
 
 // Creates a new SetDERControlResponse, containing all required fields. Optional fields may be set afterwards.
-func NewSetDERControlResponseResponse(status DERControlStatus) *SetDERControlResponse {
+func NewSetDERControlResponse(status DERControlStatus) *SetDERControlResponse {
 	return &SetDERControlResponse{
 		Status: status,
 	}

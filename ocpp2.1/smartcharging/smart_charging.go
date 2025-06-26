@@ -17,6 +17,10 @@ type CSMSHandler interface {
 	OnNotifyEVChargingSchedule(chargingStationID string, request *NotifyEVChargingScheduleRequest) (response *NotifyEVChargingScheduleResponse, err error)
 	// OnReportChargingProfiles is called on the CSMS whenever a ReportChargingProfilesRequest is received from a charging station.
 	OnReportChargingProfiles(chargingStationID string, request *ReportChargingProfilesRequest) (reponse *ReportChargingProfilesResponse, err error)
+	// OnPullDynamicScheduleUpdate is called on the CSMS whenever a PullDynamicScheduleUpdateRequest is received from a charging station.
+	OnPullDynamicScheduleUpdate(chargingStationID string, request *PullDynamicScheduleUpdateRequest) (response *PullDynamicScheduleUpdateResponse, err error)
+	// OnNotifyPriorityCharging is called on the CSMS whenever a NotifyPriorityChargingRequest is received from a charging station.
+	OnNotifyPriorityCharging(chargingStationID string, request *NotifyPriorityChargingRequest) (response *NotifyPriorityChargingResponse, err error)
 }
 
 // Needs to be implemented by Charging stations for handling messages part of the OCPP 2.1 Smart charging profile.
@@ -29,6 +33,10 @@ type ChargingStationHandler interface {
 	OnGetCompositeSchedule(request *GetCompositeScheduleRequest) (response *GetCompositeScheduleResponse, err error)
 	// OnSetChargingProfile is called on a charging station whenever a SetChargingProfileRequest is received from the CSMS.
 	OnSetChargingProfile(request *SetChargingProfileRequest) (response *SetChargingProfileResponse, err error)
+	// OnUpdateDynamicSchedule is called on a charging station whenever an UpdateDynamicScheduleRequest is received from the CSMS.
+	OnUpdateDynamicSchedule(request *UpdateDynamicScheduleRequest) (response *UpdateDynamicScheduleResponse, err error)
+	// OnUsePriorityCharging is called on a charging station whenever a UsePriorityChargingRequest is received from the CSMS.
+	OnUsePriorityCharging(request *UsePriorityChargingRequest) (response *UsePriorityChargingResponse, err error)
 }
 
 const ProfileName = "SmartCharging"
@@ -42,6 +50,10 @@ var Profile = ocpp.NewProfile(
 	NotifyChargingLimitFeature{},
 	NotifyEVChargingNeedsFeature{},
 	NotifyEVChargingScheduleFeature{},
+	NotifyPriorityChargingFeature{},
+	PullDynamicScheduleUpdateFeature{},
 	ReportChargingProfilesFeature{},
 	SetChargingProfileFeature{},
+	UpdateDynamicScheduleFeature{},
+	UsePriorityChargingFeature{},
 )

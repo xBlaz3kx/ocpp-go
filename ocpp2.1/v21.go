@@ -3,6 +3,7 @@ package ocpp21
 
 import (
 	"crypto/tls"
+	"errors"
 	"github.com/lorenzodonini/ocpp-go/internal/callbackqueue"
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ocpp2.1/authorization"
@@ -116,12 +117,25 @@ type ChargingStation interface {
 	// Sends information to the CSMS about a transaction, used for billing purposes.
 	TransactionEvent(t transactions.TransactionEvent, timestamp *types.DateTime, reason transactions.TriggerReason, seqNo int, info transactions.Transaction, props ...func(request *transactions.TransactionEventRequest)) (*transactions.TransactionEventResponse, error)
 
+	// Requests OCSP/CRL certificate chain status from the CSMS for a set of certificates.
+	GetCertificateChainStatus(info []iso15118.CertificateStatusRequestInfoType, props ...func(request *iso15118.GetCertificateChainStatusRequest)) (*iso15118.GetCertificateChainStatusResponse, error)
+	// Pulls a dynamic schedule update for the given charging profile from the CSMS.
+	PullDynamicScheduleUpdate(chargingProfileId int, props ...func(request *smartcharging.PullDynamicScheduleUpdateRequest)) (*smartcharging.PullDynamicScheduleUpdateResponse, error)
+	// Notifies the CSMS that priority charging has been activated or deactivated for a transaction.
+	NotifyPriorityCharging(transactionId string, activated bool, props ...func(request *smartcharging.NotifyPriorityChargingRequest)) (*smartcharging.NotifyPriorityChargingResponse, error)
+	// Notifies the CSMS of the settlement status for a payment transaction.
+	NotifySettlement(transactionId string, paymentReference string, status tariffcost.PaymentStatusEnumType, settlementAmount float64, settlementTime types.DateTime, props ...func(request *tariffcost.NotifySettlementRequest)) (*tariffcost.NotifySettlementResponse, error)
+	// Notifies the CSMS that a web payment has been started on the given EVSE.
+	NotifyWebPaymentStarted(evseId int, timeout int, props ...func(request *tariffcost.NotifyWebPaymentStartedRequest)) (*tariffcost.NotifyWebPaymentStartedResponse, error)
+	// Sends a VAT number to the CSMS for validation.
+	VatNumberValidation(vatNumber string, props ...func(request *tariffcost.VatNumberValidationRequest)) (*tariffcost.VatNumberValidationResponse, error)
+
 	BatterySwap(request battery_swap.BatterySwapRequest, props ...func(request *battery_swap.BatterySwapRequest)) (*battery_swap.BatterySwapResponse, error)
 	NotifyDERAlarm(request der.NotifyDERAlarmRequest, props ...func(request *der.NotifyDERAlarmRequest)) (*der.NotifyDERAlarmResponse, error)
 	NotifyDERStartStop(request der.NotifyDERStartStopRequest, props ...func(request *der.NotifyDERStartStopRequest)) (*der.NotifyDERStartStopResponse, error)
 	ReportDERControl(request der.ReportDERControlRequest, props ...func(request *der.ReportDERControlRequest)) (*der.ReportDERControlResponse, error)
 	ClosePeriodicEventStream(id int, props ...func(request *diagnostics.ClosePeriodicEventStreamRequest)) (*diagnostics.ClosePeriodicEventStreamResponse, error)
-	OpenPeriodicEventStream(periodicEventStream diagnostics.PeriodicEventStreamParams, props ...func(request *diagnostics.OpenPeriodicEventStreamRequest)) (*diagnostics.OpenPeriodicEventStreamResponse, error)
+	OpenPeriodicEventStream(constantStreamData diagnostics.ConstantStreamData, props ...func(request *diagnostics.OpenPeriodicEventStreamRequest)) (*diagnostics.OpenPeriodicEventStreamResponse, error)
 	NotifyPeriodicEventStream(periodicEventStream diagnostics.NotifyPeriodicEventStream, props ...func(request *diagnostics.NotifyPeriodicEventStream))
 
 	// Registers a handler for incoming security profile messages
@@ -226,7 +240,11 @@ type ChargingStation interface {
 //
 // For more advanced options, or if a custom networking/occpj layer is required,
 // please refer to ocppj.Client and ws.Client.
-func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client) ChargingStation {
+func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client) (ChargingStation, error) {
+	if id == "" {
+		return nil, errors.New("id must not be empty")
+	}
+
 	if client == nil {
 		client = ws.NewClient()
 	}
@@ -260,7 +278,7 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client) Cha
 			der.Profile,
 		)
 	}
-	endpoint.SetDialect(ocpp.V2)
+	endpoint.SetDialect(ocpp.V21)
 
 	cs := chargingStation{
 		client:          endpoint,
@@ -278,8 +296,9 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client) Cha
 	cs.client.SetErrorHandler(func(err *ocpp.Error, details interface{}) {
 		cs.errorHandler <- err
 	})
+
 	cs.client.SetRequestHandler(cs.handleIncomingRequest)
-	return &cs
+	return &cs, nil
 }
 
 // -------------------- v2.1 CSMS --------------------
@@ -321,7 +340,7 @@ type CSMS interface {
 	// Instructs a charging station to clear some or all charging profiles, previously sent to the charging station.
 	ClearChargingProfile(clientId string, callback func(*smartcharging.ClearChargingProfileResponse, error), props ...func(request *smartcharging.ClearChargingProfileRequest)) error
 	// Removes a specific display message, currently configured in a charging station.
-	ClearDisplay(clientId string, callback func(*display.ClearDisplayResponse, error), id int, props ...func(*display.ClearDisplayRequest)) error
+	ClearDisplay(clientId string, callback func(*display.ClearDisplayResponse, error), id int, props ...func(*display.ClearDisplayMessageRequest)) error
 	// Removes one or more monitoring settings from a charging station for the given variable IDs.
 	ClearVariableMonitoring(clientId string, callback func(*diagnostics.ClearVariableMonitoringResponse, error), id []int, props ...func(*diagnostics.ClearVariableMonitoringRequest)) error
 	// Instructs a charging station to display the updated current total cost of an ongoing transaction.
@@ -407,6 +426,10 @@ type CSMS interface {
 
 	AFRRSignal(clientId string, callback func(*v2x.AFRRSignalResponse, error), timestamp types.DateTime, signal int, props ...func(request *v2x.AFRRSignalRequest)) error
 	NotifyAllowedEnergyTransfer(clientId string, callback func(*v2x.NotifyAllowedEnergyTransferResponse, error), transactionId string, allowedModes []types.EnergyTransferMode, props ...func(request *v2x.NotifyAllowedEnergyTransferRequest)) error
+	// Sends an UpdateDynamicScheduleRequest to a charging station to update the current schedule period of a dynamic charging profile.
+	UpdateDynamicSchedule(clientId string, callback func(*smartcharging.UpdateDynamicScheduleResponse, error), chargingProfileId int, scheduleUpdate smartcharging.ChargingScheduleUpdateType, props ...func(request *smartcharging.UpdateDynamicScheduleRequest)) error
+	// Sends a UsePriorityChargingRequest to a charging station to activate or deactivate priority charging for a transaction.
+	UsePriorityCharging(clientId string, callback func(*smartcharging.UsePriorityChargingResponse, error), transactionId string, activate bool, props ...func(request *smartcharging.UsePriorityChargingRequest)) error
 
 	// Registers a handler for incoming security profile messages.
 	SetSecurityHandler(handler security.CSMSHandler)
@@ -479,7 +502,7 @@ type CSMS interface {
 // If you need a TLS server, you may use the following:
 //
 //	csms := NewCSMS(nil, ws.NewServer(ws.WithServerTLSConfig("certificatePath", "privateKeyPath", nil)))
-func NewCSMS(endpoint *ocppj.Server, server ws.Server) CSMS {
+func NewCSMS(endpoint *ocppj.Server, server ws.Server) (CSMS, error) {
 	if server == nil {
 		server = ws.NewServer()
 	}
@@ -507,7 +530,12 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server) CSMS {
 			der.Profile,
 		)
 	}
-	cs := newCSMS(endpoint)
+
+	cs, err := newCSMS(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	cs.server.SetRequestHandler(func(client ws.Channel, request ocpp.Request, requestId string, action string) {
 		cs.handleIncomingRequest(client, request, requestId, action)
 	})
@@ -520,5 +548,6 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server) CSMS {
 	cs.server.SetCanceledRequestHandler(func(clientID string, requestID string, request ocpp.Request, err *ocpp.Error) {
 		cs.handleCanceledRequest(clientID, request, err)
 	})
-	return &cs
+
+	return &cs, nil
 }

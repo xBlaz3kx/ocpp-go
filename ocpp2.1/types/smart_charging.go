@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
 	"gopkg.in/go-playground/validator.v9"
 )
 
@@ -174,7 +173,7 @@ type ChargingProfile struct {
 	MaxOfflineDuration          *int                       `json:"maxOfflineDuration,omitempty" validate:"omitempty"`
 	InvalidAfterOfflineDuration bool                       `json:"invalidAfterOfflineDuration,omitempty" validate:"omitempty"`
 	DynUpdateInterval           *int                       `json:"dynUpdateInterval,omitempty" validate:"omitempty"`
-	DynUpdateTime               *types.DateTime            `json:"dynUpdateTime,omitempty" validate:"omitempty"`
+	DynUpdateTime               *DateTime                  `json:"dynUpdateTime,omitempty" validate:"omitempty"`
 	PriceScheduleSignature      *string                    `json:"priceScheduleSignature,omitempty" validate:"omitempty,max=256"`
 	ChargingSchedule            []ChargingSchedule         `json:"chargingSchedule" validate:"required,min=1,max=3,dive"`
 }
@@ -186,8 +185,15 @@ func NewChargingProfile(id int, stackLevel int, chargingProfilePurpose ChargingP
 type EnergyTransferMode string
 
 const (
-	EnergyTransferModeDC       EnergyTransferMode = "DC"              // DC charging.
-	EnergyTransferModeAC1Phase EnergyTransferMode = "AC_single_phase" // AC single phase charging according to IEC 62196.
-	EnergyTransferModeAC2Phase EnergyTransferMode = "AC_two_phase"    // AC two phase charging according to IEC 62196.
-	EnergyTransferModeAC3Phase EnergyTransferMode = "AC_three_phase"  // AC three phase charging according to IEC 62196.
+	EnergyTransferModeDC          EnergyTransferMode = "DC"              // DC charging.
+	EnergyTransferModeAC1Phase    EnergyTransferMode = "AC_single_phase" // AC single phase charging according to IEC 62196.
+	EnergyTransferModeAC2Phase    EnergyTransferMode = "AC_two_phase"    // AC two phase charging according to IEC 62196.
+	EnergyTransferModeAC3Phase    EnergyTransferMode = "AC_three_phase"  // AC three phase charging according to IEC 62196.
+	EnergyTransferModeACBPT       EnergyTransferMode = "AC_BPT"          // AC bidirectional power transfer.
+	EnergyTransferModeACBPTDER    EnergyTransferMode = "AC_BPT_DER"      // AC bidirectional power transfer with DER control.
+	EnergyTransferModeACDER       EnergyTransferMode = "AC_DER"          // AC with DER control.
+	EnergyTransferModeDCBPT       EnergyTransferMode = "DC_BPT"          // DC bidirectional power transfer.
+	EnergyTransferModeDCACDP      EnergyTransferMode = "DC_ACDP"         // DC charging via ACDP (pantograph).
+	EnergyTransferModeDCACDPBPT   EnergyTransferMode = "DC_ACDP_BPT"    // DC bidirectional power transfer via ACDP.
+	EnergyTransferModeWPT         EnergyTransferMode = "WPT"             // Wireless power transfer.
 )

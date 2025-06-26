@@ -14,7 +14,9 @@ const NotifyEVChargingNeedsFeatureName = "NotifyEVChargingNeeds"
 func isValidEnergyTransferMode(fl validator.FieldLevel) bool {
 	status := types.EnergyTransferMode(fl.Field().String())
 	switch status {
-	case types.EnergyTransferModeAC1Phase, types.EnergyTransferModeAC2Phase, types.EnergyTransferModeAC3Phase, types.EnergyTransferModeDC:
+	case types.EnergyTransferModeAC1Phase, types.EnergyTransferModeAC2Phase, types.EnergyTransferModeAC3Phase, types.EnergyTransferModeDC,
+		types.EnergyTransferModeACBPT, types.EnergyTransferModeACBPTDER, types.EnergyTransferModeACDER,
+		types.EnergyTransferModeDCBPT, types.EnergyTransferModeDCACDP, types.EnergyTransferModeDCACDPBPT, types.EnergyTransferModeWPT:
 		return true
 	default:
 		return false

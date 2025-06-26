@@ -1,6 +1,7 @@
 package ocpp21
 
 import (
+	"errors"
 	"fmt"
 	"github.com/lorenzodonini/ocpp-go/internal/callbackqueue"
 	"github.com/lorenzodonini/ocpp-go/ocpp"
@@ -54,15 +55,15 @@ type csms struct {
 	errC                 chan error
 }
 
-func newCSMS(server *ocppj.Server) csms {
+func newCSMS(server *ocppj.Server) (csms, error) {
 	if server == nil {
-		panic("server must not be nil")
+		return csms{}, errors.New("server must not be nil")
 	}
-	server.SetDialect(ocpp.V2)
+	server.SetDialect(ocpp.V21)
 	return csms{
 		server:        server,
 		callbackQueue: callbackqueue.New(),
-	}
+	}, nil
 }
 
 func (cs *csms) error(err error) {
@@ -153,7 +154,7 @@ func (cs *csms) ClearChargingProfile(clientId string, callback func(*smartchargi
 	return cs.SendRequestAsync(clientId, request, genericCallback)
 }
 
-func (cs *csms) ClearDisplay(clientId string, callback func(*display.ClearDisplayResponse, error), id int, props ...func(*display.ClearDisplayRequest)) error {
+func (cs *csms) ClearDisplay(clientId string, callback func(*display.ClearDisplayResponse, error), id int, props ...func(*display.ClearDisplayMessageRequest)) error {
 	request := display.NewClearDisplayRequest(id)
 	for _, fn := range props {
 		fn(request)
@@ -813,7 +814,7 @@ func (cs *csms) GetDERControl(clientId string, callback func(*der.GetDERControlR
 }
 
 func (cs *csms) SetDERControl(clientId string, callback func(*der.SetDERControlResponse, error), isDefault bool, controlId string, derControl der.DERControl, props ...func(request *der.SetDERControlRequest)) error {
-	request := der.NewSetDERControlResponseRequest(isDefault, controlId, derControl)
+	request := der.NewSetDERControlRequest(isDefault, controlId, derControl)
 	for _, fn := range props {
 		fn(request)
 	}
@@ -850,6 +851,36 @@ func (cs *csms) NotifyAllowedEnergyTransfer(clientId string, callback func(*v2x.
 	genericCallback := func(response ocpp.Response, protoError error) {
 		if response != nil {
 			callback(response.(*v2x.NotifyAllowedEnergyTransferResponse), protoError)
+		} else {
+			callback(nil, protoError)
+		}
+	}
+	return cs.SendRequestAsync(clientId, request, genericCallback)
+}
+
+func (cs *csms) UpdateDynamicSchedule(clientId string, callback func(*smartcharging.UpdateDynamicScheduleResponse, error), chargingProfileId int, scheduleUpdate smartcharging.ChargingScheduleUpdateType, props ...func(request *smartcharging.UpdateDynamicScheduleRequest)) error {
+	request := smartcharging.NewUpdateDynamicScheduleRequest(chargingProfileId, scheduleUpdate)
+	for _, fn := range props {
+		fn(request)
+	}
+	genericCallback := func(response ocpp.Response, protoError error) {
+		if response != nil {
+			callback(response.(*smartcharging.UpdateDynamicScheduleResponse), protoError)
+		} else {
+			callback(nil, protoError)
+		}
+	}
+	return cs.SendRequestAsync(clientId, request, genericCallback)
+}
+
+func (cs *csms) UsePriorityCharging(clientId string, callback func(*smartcharging.UsePriorityChargingResponse, error), transactionId string, activate bool, props ...func(request *smartcharging.UsePriorityChargingRequest)) error {
+	request := smartcharging.NewUsePriorityChargingRequest(transactionId, activate)
+	for _, fn := range props {
+		fn(request)
+	}
+	genericCallback := func(response ocpp.Response, protoError error) {
+		if response != nil {
+			callback(response.(*smartcharging.UsePriorityChargingResponse), protoError)
 		} else {
 			callback(nil, protoError)
 		}
@@ -1197,6 +1228,8 @@ func (cs *csms) handleIncomingRequest(chargingStation ChargingStationConnection,
 			response, err = cs.iso15118Handler.OnGet15118EVCertificate(chargingStation.ID(), request.(*iso15118.Get15118EVCertificateRequest))
 		case iso15118.GetCertificateStatusFeatureName:
 			response, err = cs.iso15118Handler.OnGetCertificateStatus(chargingStation.ID(), request.(*iso15118.GetCertificateStatusRequest))
+		case iso15118.GetCertificateChainStatusFeatureName:
+			response, err = cs.iso15118Handler.OnGetCertificateChainStatus(chargingStation.ID(), request.(*iso15118.GetCertificateChainStatusRequest))
 		case availability.HeartbeatFeatureName:
 			response, err = cs.availabilityHandler.OnHeartbeat(chargingStation.ID(), request.(*availability.HeartbeatRequest))
 		case diagnostics.LogStatusNotificationFeatureName:
@@ -1213,6 +1246,10 @@ func (cs *csms) handleIncomingRequest(chargingStation ChargingStationConnection,
 			response, err = cs.smartChargingHandler.OnNotifyEVChargingNeeds(chargingStation.ID(), request.(*smartcharging.NotifyEVChargingNeedsRequest))
 		case smartcharging.NotifyEVChargingScheduleFeatureName:
 			response, err = cs.smartChargingHandler.OnNotifyEVChargingSchedule(chargingStation.ID(), request.(*smartcharging.NotifyEVChargingScheduleRequest))
+		case smartcharging.PullDynamicScheduleUpdateFeatureName:
+			response, err = cs.smartChargingHandler.OnPullDynamicScheduleUpdate(chargingStation.ID(), request.(*smartcharging.PullDynamicScheduleUpdateRequest))
+		case smartcharging.NotifyPriorityChargingFeatureName:
+			response, err = cs.smartChargingHandler.OnNotifyPriorityCharging(chargingStation.ID(), request.(*smartcharging.NotifyPriorityChargingRequest))
 		case diagnostics.NotifyEventFeatureName:
 			response, err = cs.diagnosticsHandler.OnNotifyEvent(chargingStation.ID(), request.(*diagnostics.NotifyEventRequest))
 		case diagnostics.NotifyMonitoringReportFeatureName:
@@ -1235,6 +1272,12 @@ func (cs *csms) handleIncomingRequest(chargingStation ChargingStationConnection,
 			response, err = cs.transactionsHandler.OnTransactionEvent(chargingStation.ID(), request.(*transactions.TransactionEventRequest))
 		case battery_swap.BatterySwap:
 			response, err = cs.batterySwapHandler.OnBatterySwap(chargingStation.ID(), request.(*battery_swap.BatterySwapRequest))
+		case tariffcost.NotifySettlementFeatureName:
+			response, err = cs.tariffCostHandler.OnNotifySettlement(chargingStation.ID(), request.(*tariffcost.NotifySettlementRequest))
+		case tariffcost.NotifyWebPaymentStartedFeatureName:
+			response, err = cs.tariffCostHandler.OnNotifyWebPaymentStarted(chargingStation.ID(), request.(*tariffcost.NotifyWebPaymentStartedRequest))
+		case tariffcost.VatNumberValidationFeatureName:
+			response, err = cs.tariffCostHandler.OnVatNumberValidation(chargingStation.ID(), request.(*tariffcost.VatNumberValidationRequest))
 		case der.NotifyDERAlarm:
 			response, err = cs.derControlHandler.OnNotifyDERAlarm(chargingStation.ID(), request.(*der.NotifyDERAlarmRequest))
 		case der.NotifyDERStartStop:
