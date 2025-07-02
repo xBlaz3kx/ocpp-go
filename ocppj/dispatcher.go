@@ -40,6 +40,12 @@ type ClientDispatcher interface {
 	//
 	// If no network client was set, or the request couldn't be processed, an error is returned.
 	SendRequest(req RequestBundle) error
+
+	// Dispatches a send event. Depending on the implementation, this may first queue a request
+	// and process it later, asynchronously, or write it directly to the networking layer.
+	//
+	// If no network client was set, or the request couldn't be processed, an error is returned.
+	SendEvent(req EventBundle) error
 	// Notifies the dispatcher that a request has been completed (i.e. a response was received).
 	// The dispatcher takes care of removing the request marked by the requestID from
 	// the pending requests. It will then attempt to process the next queued request.
@@ -160,6 +166,19 @@ func (d *DefaultClientDispatcher) SetPendingRequestState(state ClientState) {
 func (d *DefaultClientDispatcher) SendRequest(req RequestBundle) error {
 	if d.network == nil {
 		return fmt.Errorf("cannot SendRequest, no network client was set")
+	}
+	if err := d.requestQueue.Push(req); err != nil {
+		return err
+	}
+	d.mutex.RLock()
+	d.requestChannel <- true
+	d.mutex.RUnlock()
+	return nil
+}
+
+func (d *DefaultClientDispatcher) SendEvent(req EventBundle) error {
+	if d.network == nil {
+		return fmt.Errorf("cannot SendEvent, no network client was set")
 	}
 	if err := d.requestQueue.Push(req); err != nil {
 		return err
@@ -319,6 +338,11 @@ type ServerDispatcher interface {
 	//
 	// If no network server was set, or the request couldn't be processed, an error is returned.
 	SendRequest(clientID string, req RequestBundle) error
+	// Dispatches a SEND request for a specific client. Depending on the implementation, this may first queue
+	// a request and process it later (asynchronously), or write it directly to the networking layer.
+	//
+	// If no network server was set, or the request couldn't be processed, an error is returned.
+	SendEvent(clientID string, req EventBundle) error
 	// Notifies the dispatcher that a request has been completed (i.e. a response was received),
 	// for a specific client.
 	// The dispatcher takes care of removing the request marked by the requestID from
@@ -461,6 +485,23 @@ func (d *DefaultServerDispatcher) SendRequest(clientID string, req RequestBundle
 	q, ok := d.queueMap.Get(clientID)
 	if !ok {
 		return fmt.Errorf("cannot send request %s, no client %s exists", req.Call.UniqueId, clientID)
+	}
+	if err := q.Push(req); err != nil {
+		return err
+	}
+	d.mutex.RLock()
+	d.requestChannel <- clientID
+	d.mutex.RUnlock()
+	return nil
+}
+
+func (d *DefaultServerDispatcher) SendEvent(clientID string, req EventBundle) error {
+	if d.network == nil {
+		return fmt.Errorf("cannot send event %v, no network server was set", req.Send.UniqueId)
+	}
+	q, ok := d.queueMap.Get(clientID)
+	if !ok {
+		return fmt.Errorf("cannot send event %s, no client %s exists", req.Send.UniqueId, clientID)
 	}
 	if err := q.Push(req); err != nil {
 		return err
