@@ -17,8 +17,16 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout (pull request)
         uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          ref: ${{ github.head_ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Checkout (default)
+        uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
         with:
           ref: ${{ github.head_ref }}
 
