@@ -12,12 +12,20 @@ The library targets modern charge points and central systems, running OCPP versi
 Given that SOAP will no longer be supported in future versions of OCPP, only OCPP-J is supported in this library.
 There are currently no plans of supporting OCPP-S.
 
+> [!NOTE]  
+> This library is not affiliated with the Open Charge Alliance (OCA) in any way.
+
+> [!NOTE]  
+> This library is a fork of the original [lorenzodonini/ocpp-go](https://github.com/lorenzodonini/ocpp-go) repository.
+> There might be some deviations in the API, as the main goal of this fork is to provide a more actively
+> maintained version of the library with additional features and improvements, which may not result in stable releases
+
 ## Installation
 
 Go version 1.13+ is required.
 
 ```sh
-go get github.com/lorenzodonini/ocpp-go
+go get github.com/xBlaz3kx/ocpp-go@latest
 ```
 
 You will also need to fetch some dependencies:
@@ -39,7 +47,9 @@ but naming changed.**
 
 Planned milestones and features:
 
--   [ ] Dedicated package for configuration management
+- [ ] OCPP 2.1 support (in progress)
+- [ ] OCPP 2.1 variable management
+- [ ] OCPP 2.0.1 variable management
 
 ### Supported versions
 
@@ -47,6 +57,7 @@ Planned milestones and features:
 -   [x] OCPP 1.6 Security extension (documentation available [here](docs/ocpp1.6-security-extension.md))
 -   [x] OCPP 2.0.1 (examples working, but will need more real-world testing) (documentation
     available [here](docs/ocpp-2.0.1.md))
+-   [x] Dedicated package for configuration management
 
 ### Features
 
@@ -124,7 +135,7 @@ To enable compression on the client side, use the following code:
 
 ```go
 websocketClient := ws.NewClient(
-    WithClientCompression(true),
+ws.WithClientCompression(true),
 )
 
 ```
@@ -142,3 +153,7 @@ ws.WithCompression(true),
 
 Contributions are welcome! Please refer to the [testing](docs/testing.md) guide for instructions on how to run the
 tests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
