@@ -333,13 +333,8 @@ func main() {
 
 	if t, _ := os.LookupEnv(envProfilingEnabled); t == "true" {
 		address, _ := os.LookupEnv(envPyroscopeAddress)
-		if err := setupMetrics(address); err != nil {
-			log.Error(err)
-			return
-		}
-
 		profiler, err := pyroscope.Start(pyroscope.Config{
-			ApplicationName: "ocpp16.central_system_sim",
+			ApplicationName: "ocpp201.central_system_sim",
 			ServerAddress:   address,
 			ProfileTypes: []pyroscope.ProfileType{
 				pyroscope.ProfileCPU,
