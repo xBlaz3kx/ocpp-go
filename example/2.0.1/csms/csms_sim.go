@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/grafana/pyroscope-go"
 	"os"
 	"strconv"
 	"time"
@@ -42,6 +43,8 @@ const (
 	envVarServerCertificateKey = "SERVER_CERTIFICATE_KEY_PATH"
 	envVarMetricsEnabled       = "METRICS_ENABLED"
 	envVarMetricsAddress       = "METRICS_ADDRESS"
+	envProfilingEnabled        = "PROFILING_ENABLED"
+	envPyroscopeAddress        = "PYROSCOPE_ADDRESS"
 )
 
 var log *logrus.Logger
@@ -326,6 +329,40 @@ func main() {
 			log.Error(err)
 			return
 		}
+	}
+
+	if t, _ := os.LookupEnv(envProfilingEnabled); t == "true" {
+		address, _ := os.LookupEnv(envPyroscopeAddress)
+		if err := setupMetrics(address); err != nil {
+			log.Error(err)
+			return
+		}
+
+		profiler, err := pyroscope.Start(pyroscope.Config{
+			ApplicationName: "ocpp16.central_system_sim",
+			ServerAddress:   address,
+			ProfileTypes: []pyroscope.ProfileType{
+				pyroscope.ProfileCPU,
+				pyroscope.ProfileInuseObjects,
+				pyroscope.ProfileAllocObjects,
+				pyroscope.ProfileInuseSpace,
+				pyroscope.ProfileAllocSpace,
+				pyroscope.ProfileGoroutines,
+				pyroscope.ProfileMutexCount,
+				pyroscope.ProfileMutexDuration,
+				pyroscope.ProfileBlockCount,
+				pyroscope.ProfileBlockDuration,
+			},
+		})
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		defer func() {
+			profiler.Flush(true)
+			_ = profiler.Stop()
+		}()
 	}
 
 	// Check if TLS enabled
