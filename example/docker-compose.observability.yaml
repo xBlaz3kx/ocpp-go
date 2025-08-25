@@ -7,7 +7,7 @@ services:
   # Your CPMS backend will push the metrics in OTLP format to the Otel collector.
   # The collector comes as a part of the LGTM stack.
   grafana-lgtm-stack:
-    image: grafana/otel-lgtm
+    image: grafana/otel-lgtm:latest
     container_name: lgtm-stack
     hostname: lgtm-stack
     #environment:
@@ -17,11 +17,14 @@ services:
       - prometheus:/prometheus
       - loki:/data/loki
       - grafana:/var/lib/grafana
+      - ./grafana-provision/grafana:/etc/grafana/provisioning
     networks:
       - sim
     ports:
-      - "3000:3000"
-      - "4317:4317"
+      - "3000:3000" # Grafana
+      - "4317:4317" # OTLP gRPC receiver
+      - "9097:9097" # Pyroscope (profiling)
+      - "9090:9090" # Prometheus
 
 networks:
   sim:
