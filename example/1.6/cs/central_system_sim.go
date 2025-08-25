@@ -4,19 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/grafana/pyroscope-go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	metricsdk "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	ocpp16 "github.com/lorenzodonini/ocpp-go/ocpp1.6"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
@@ -27,6 +20,13 @@ import (
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
 	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/lorenzodonini/ocpp-go/ws"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	metricsdk "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 )
 
 const (
@@ -39,6 +39,8 @@ const (
 	envVarServerCertificateKey = "SERVER_CERTIFICATE_KEY_PATH"
 	envVarMetricsEnabled       = "METRICS_ENABLED"
 	envVarMetricsAddress       = "METRICS_ADDRESS"
+	envProfilingEnabled        = "PROFILING_ENABLED"
+	envPyroscopeAddress        = "PYROSCOPE_ADDRESS"
 )
 
 var log *logrus.Logger
@@ -206,7 +208,6 @@ func setupMetrics(address string) error {
 	}
 
 	client, err := grpc.NewClient(address, grpcOpts...)
-
 	if err != nil {
 		return errors.Wrap(err, "failed to create gRPC connection to collector")
 	}
@@ -265,6 +266,40 @@ func main() {
 			log.Error(err)
 			return
 		}
+	}
+
+	if t, _ := os.LookupEnv(envProfilingEnabled); t == "true" {
+		address, _ := os.LookupEnv(envPyroscopeAddress)
+		if err := setupMetrics(address); err != nil {
+			log.Error(err)
+			return
+		}
+
+		profiler, err := pyroscope.Start(pyroscope.Config{
+			ApplicationName: "ocpp16.central_system_sim",
+			ServerAddress:   address,
+			ProfileTypes: []pyroscope.ProfileType{
+				pyroscope.ProfileCPU,
+				pyroscope.ProfileInuseObjects,
+				pyroscope.ProfileAllocObjects,
+				pyroscope.ProfileInuseSpace,
+				pyroscope.ProfileAllocSpace,
+				pyroscope.ProfileGoroutines,
+				pyroscope.ProfileMutexCount,
+				pyroscope.ProfileMutexDuration,
+				pyroscope.ProfileBlockCount,
+				pyroscope.ProfileBlockDuration,
+			},
+		})
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		defer func() {
+			profiler.Flush(true)
+			_ = profiler.Stop()
+		}()
 	}
 
 	// Check if TLS enabled
