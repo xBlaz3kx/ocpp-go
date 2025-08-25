@@ -17,11 +17,22 @@ services:
       - prometheus:/prometheus
       - loki:/data/loki
       - grafana:/var/lib/grafana
+      - ./grafana-provision/grafana:/etc/grafana/provisioning
     networks:
       - sim
     ports:
       - "3000:3000"
       - "4317:4317"
+
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - 4040:4040
+    volumes:
+      - ./grafana-provision/pyroscope:/etc/pyroscope
+    command:
+      - -config.file
+      - /etc/pyroscope/cfg.yaml
 
 networks:
   sim:
