@@ -23,7 +23,7 @@ services:
     ports:
       - "3000:3000" # Grafana
       - "4317:4317" # OTLP gRPC receiver
-      - "9097:9097" # Pyroscope (profiling)
+      - "4040:4040" # Pyroscope
       - "9090:9090" # Prometheus
 
 networks:
