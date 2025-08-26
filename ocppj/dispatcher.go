@@ -606,7 +606,7 @@ func (d *DefaultServerDispatcher) dispatchNextRequest(clientID string) (clientCt
 	}
 	// Create and return context (only if timeout is set)
 	if d.timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.TODO(), d.timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
 		clientCtx = clientTimeoutContext{ctx: ctx, cancel: cancel}
 	}
 	log.Infof("dispatched request %s for %s", callID, clientID)

@@ -45,8 +45,21 @@ type InvalidMessageHook func(client ws.Channel, err *ocpp.Error, rawJson string,
 //
 // The dispatcher's associated ClientState will be set during initialization.
 func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler ServerState, profiles ...*ocpp.Profile) *Server {
+	meterProvider := otel.GetMeterProvider()
+	metrics, err := newOcppMetrics(meterProvider, "")
+	if err != nil {
+		log.Error(errors.Wrapf(err, "failed to create OCPP metrics"))
+		// todo improve error handling
+		return nil
+	}
+
 	if dispatcher == nil {
-		dispatcher = NewDefaultServerDispatcher(NewFIFOQueueMap(0))
+		perClientQueue := NewFIFOQueueMap(0)
+
+		// Observe queue lengths
+		metrics.ObserveRequestQueue(context.Background(), perClientQueue)
+
+		dispatcher = NewDefaultServerDispatcher(perClientQueue)
 	}
 	if stateHandler == nil {
 		d, ok := dispatcher.(*DefaultServerDispatcher)
@@ -61,14 +74,6 @@ func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler Ser
 	}
 	dispatcher.SetNetworkServer(wsServer)
 	dispatcher.SetPendingRequestState(stateHandler)
-
-	meterProvider := otel.GetMeterProvider()
-	metrics, err := newOcppMetrics(meterProvider, "")
-	if err != nil {
-		log.Error(errors.Wrapf(err, "failed to create OCPP metrics"))
-		// todo improve error handling
-		return nil
-	}
 
 	// Create server and add profiles
 	s := Server{
