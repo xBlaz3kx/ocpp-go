@@ -176,7 +176,7 @@ func WithCompression(enabled bool) ServerOpt {
 	}
 }
 
-// WithServerMeterProvider  sets the meter provider for server metrics.
+// WithServerMeterProvider sets the meter provider for server metrics.
 // It will create metrics with the given provider and attach them to the server.
 func WithServerMeterProvider(meterProvider metric.MeterProvider) ServerOpt {
 	return func(s *server) {
@@ -207,12 +207,12 @@ func WithServerMeterProvider(meterProvider metric.MeterProvider) ServerOpt {
 //
 // When TLS is correctly configured, the server will automatically use it for all created websocket channels.
 func NewServer(opts ...ServerOpt) Server {
-	// Note: If metrics are not configured, a noops meter provider is used and no metrics are exported.
+	// Note: If metrics are not configured, a noop meter provider is used and no metrics are exported.
 	meterProvider := otel.GetMeterProvider()
 	websocketMetrics, err := newMetrics(meterProvider)
 	if err != nil {
 		// todo improve error handling
-		log.Error(errors.Wrap(err, "Error creating websocket metrics"))
+		log.Error(errors.Wrap(err, "Error creating websocket server metrics"))
 	}
 
 	router := mux.NewRouter()
