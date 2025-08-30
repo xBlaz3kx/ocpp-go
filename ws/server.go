@@ -148,7 +148,7 @@ type server struct {
 	connMutex             sync.RWMutex
 	addr                  *net.TCPAddr
 	httpHandler           *mux.Router
-	metrics               *metrics
+	metrics               *serverMetrics
 }
 
 // ServerOpt is a function that can be used to set options on a server during creation.
@@ -170,7 +170,7 @@ func WithServerTLSConfig(certificatePath string, certificateKey string, tlsConfi
 // It will create metrics with the given provider and attach them to the server.
 func WithServerMeterProvider(meterProvider metric.MeterProvider) ServerOpt {
 	return func(s *server) {
-		m, err := newMetrics(meterProvider)
+		m, err := newServerMetrics(meterProvider)
 		if err != nil {
 			return
 		}
@@ -199,7 +199,7 @@ func WithServerMeterProvider(meterProvider metric.MeterProvider) ServerOpt {
 func NewServer(opts ...ServerOpt) Server {
 	// Note: If metrics are not configured, a noop meter provider is used and no metrics are exported.
 	meterProvider := otel.GetMeterProvider()
-	websocketMetrics, err := newMetrics(meterProvider)
+	serverMetrics, err := newServerMetrics(meterProvider)
 	if err != nil {
 		// todo improve error handling
 		log.Error(errors.Wrap(err, "Error creating websocket server metrics"))
@@ -215,7 +215,7 @@ func NewServer(opts ...ServerOpt) Server {
 			url := r.URL
 			return path.Base(url.Path), nil
 		},
-		metrics: websocketMetrics,
+		metrics: serverMetrics,
 	}
 	for _, o := range opts {
 		o(s)
