@@ -39,8 +39,8 @@ type ocppMetrics struct {
 	meter              metric.Meter
 }
 
-// newOcppMetrics Creates a new metrics instance
-func newOcppMetrics(meterProvider metric.MeterProvider, ocppVersion string) (*ocppMetrics, error) {
+// newOcppServerMetrics Creates a new metrics instance
+func newOcppServerMetrics(meterProvider metric.MeterProvider, ocppVersion string) (*ocppMetrics, error) {
 	if meterProvider == nil {
 		return nil, errors.New("meterProvider is required")
 	}

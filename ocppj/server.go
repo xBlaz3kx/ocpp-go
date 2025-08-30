@@ -46,7 +46,7 @@ type InvalidMessageHook func(client ws.Channel, err *ocpp.Error, rawJson string,
 // The dispatcher's associated ClientState will be set during initialization.
 func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler ServerState, profiles ...*ocpp.Profile) *Server {
 	meterProvider := otel.GetMeterProvider()
-	metrics, err := newOcppMetrics(meterProvider, "")
+	metrics, err := newOcppServerMetrics(meterProvider, "")
 	if err != nil {
 		log.Error(errors.Wrapf(err, "failed to create OCPP metrics"))
 		// todo improve error handling
@@ -323,7 +323,7 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 			s.metrics.IncrementOutboundRequests(metricCtx, wsChannel.ID(), callResult.Payload.GetFeatureName(), nil)
 		case CALL_ERROR:
 			callError := message.(*CallError)
-			log.Debugf("handling incoming CALL RESULT [%s] from %s", callError.UniqueId, wsChannel.ID())
+			log.Debugf("handling incoming CALL ERROR [%s] from %s", callError.UniqueId, wsChannel.ID())
 			s.dispatcher.CompleteRequest(wsChannel.ID(), callError.GetUniqueId())
 			if s.errorHandler != nil {
 				s.errorHandler(wsChannel, ocpp.NewError(callError.ErrorCode, callError.ErrorDescription, callError.UniqueId), callError.ErrorDetails)
