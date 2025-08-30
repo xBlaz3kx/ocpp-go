@@ -193,16 +193,19 @@ func (s *Server) SendRequest(clientID string, request ocpp.Request) error {
 
 	call, err := s.CreateCall(request)
 	if err != nil {
+		metricErr = &payloadError // Could also be a val
 		return err
 	}
 
 	jsonMessage, err := call.MarshalJSON()
 	if err != nil {
+		metricErr = &payloadError
 		return err
 	}
 
 	// Will not send right away. Queuing message and let it be processed by dedicated requestPump routine
 	if err = s.dispatcher.SendRequest(clientID, RequestBundle{call, jsonMessage}); err != nil {
+		metricErr = &metricsNetworkError
 		log.Errorf("error dispatching request [%s, %s] to %s: %v", call.UniqueId, call.Action, clientID, err)
 		return err
 	}
