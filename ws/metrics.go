@@ -25,7 +25,7 @@ const (
 	directionOutbound = "outbound"
 )
 
-type metrics struct {
+type serverMetrics struct {
 	connectedChargePoints int64
 	mu                    sync.Mutex
 
@@ -34,9 +34,9 @@ type metrics struct {
 	messageRate                 metric.Int64Histogram
 }
 
-func newMetrics(meterProvider metric.MeterProvider) (*metrics, error) {
+func newServerMetrics(meterProvider metric.MeterProvider) (*serverMetrics, error) {
 	meter := meterProvider.Meter("websocket")
-	m := &metrics{}
+	m := &serverMetrics{}
 
 	chargePointsConnected, err := meter.Int64ObservableGauge(
 		chargePointsConnectedMetric,
@@ -73,14 +73,14 @@ func newMetrics(meterProvider metric.MeterProvider) (*metrics, error) {
 	return m, nil
 }
 
-func (m *metrics) IncrementChargePoints() {
+func (m *serverMetrics) IncrementChargePoints() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	atomic.AddInt64(&m.connectedChargePoints, 1)
 }
 
-func (m *metrics) DecrementChargePoints() {
+func (m *serverMetrics) DecrementChargePoints() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -92,7 +92,7 @@ func (m *metrics) DecrementChargePoints() {
 	atomic.AddInt64(&m.connectedChargePoints, -1)
 }
 
-func (m *metrics) RecordMessageRate(ctx context.Context, chargePointId string, direction string) {
+func (m *serverMetrics) RecordMessageRate(ctx context.Context, chargePointId string, direction string) {
 	attributes := metric.WithAttributes(
 		attribute.String(attributeChargePointId, chargePointId),
 		attribute.String(attributeDirection, direction),
@@ -100,7 +100,7 @@ func (m *metrics) RecordMessageRate(ctx context.Context, chargePointId string, d
 	m.messageRate.Record(ctx, 1, attributes)
 }
 
-func (m *metrics) RecordPingPongDuration(ctx context.Context, duration time.Duration, chargePointId string) {
+func (m *serverMetrics) RecordPingPongDuration(ctx context.Context, duration time.Duration, chargePointId string) {
 	attributes := metric.WithAttributes(
 		attribute.String(attributeChargePointId, chargePointId),
 	)
