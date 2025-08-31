@@ -55,7 +55,7 @@ return nil
 }
 ```
 
-You can check out the [reference implementation](../example/1.6/cs/central_system_sim.go), and deploy it with:
+You can check out the [reference implementation](../../example/1.6/cs/central_system_sim.go), and deploy it with:
 
 ```bash
 make example-ocpp16-observability
