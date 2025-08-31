@@ -1,6 +1,6 @@
 import {randomIntBetween, randomString} from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 import ws from 'k6/ws';
-import {check, sleep} from 'k6';
+import {sleep, check} from 'k6';
 
 // OCPP 1.6 Core profile message structure constants
 const MESSAGE_TYPE = {
@@ -16,7 +16,10 @@ const ACTIONS = {
     AUTHORIZE: 'Authorize',
     START_TRANSACTION: 'StartTransaction',
     STOP_TRANSACTION: 'StopTransaction',
-    METER_VALUES: 'MeterValues'
+    METER_VALUES: 'MeterValues',
+    FIRMWARE_STATUS_NOTIFICATION: 'FirmwareStatusNotification',
+    DIAGNOSTICS_STATUS_NOTIFICATION: 'DiagnosticsStatusNotification',
+    DATA_TRANSFER: 'DataTransfer'
 };
 
 // Core profile incoming request actions from central system
@@ -29,7 +32,17 @@ const INCOMING_ACTIONS = {
     REMOTE_START_TRANSACTION: 'RemoteStartTransaction',
     REMOTE_STOP_TRANSACTION: 'RemoteStopTransaction',
     RESET: 'Reset',
-    UNLOCK_CONNECTOR: 'UnlockConnector'
+    UNLOCK_CONNECTOR: 'UnlockConnector',
+    GET_DIAGNOSTICS: 'GetDiagnostics',
+    UPDATE_FIRMWARE: 'UpdateFirmware',
+    GET_LOCAL_LIST_VERSION: 'GetLocalListVersion',
+    SEND_LOCAL_LIST: 'SendLocalList',
+    RESERVE_NOW: 'ReserveNow',
+    CANCEL_RESERVATION: 'CancelReservation',
+    SET_CHARGING_PROFILE: 'SetChargingProfile',
+    CLEAR_CHARGING_PROFILE: 'ClearChargingProfile',
+    GET_COMPOSITE_SCHEDULE: 'GetCompositeSchedule',
+    TRIGGER_MESSAGE: 'TriggerMessage'
 };
 
 // Generate unique charge point ID
@@ -137,6 +150,38 @@ function createCallError(messageId: string, errorCode: string, errorDescription:
     return JSON.stringify([MESSAGE_TYPE.CALL_ERROR, messageId, errorCode, errorDescription, {}]);
 }
 
+// Generate OCPP 1.6 Core profile FirmwareStatusNotification message
+function createFirmwareStatusNotification(status: string) {
+    const messageId = randomString(8);
+    const payload = {
+        status: status
+    };
+
+    return JSON.stringify([MESSAGE_TYPE.CALL, messageId, ACTIONS.FIRMWARE_STATUS_NOTIFICATION, payload]);
+}
+
+// Generate OCPP 1.6 Core profile DiagnosticsStatusNotification message
+function createDiagnosticsStatusNotification(status: string) {
+    const messageId = randomString(8);
+    const payload = {
+        status: status
+    };
+
+    return JSON.stringify([MESSAGE_TYPE.CALL, messageId, ACTIONS.DIAGNOSTICS_STATUS_NOTIFICATION, payload]);
+}
+
+// Generate OCPP 1.6 Core profile DataTransfer message (outgoing)
+function createDataTransfer(vendorId: string, messageId?: string, data?: string) {
+    const msgId = randomString(8);
+    const payload = {
+        vendorId: vendorId,
+        messageId: messageId,
+        data: data
+    };
+
+    return JSON.stringify([MESSAGE_TYPE.CALL, msgId, ACTIONS.DATA_TRANSFER, payload]);
+}
+
 // Handle incoming Core profile ChangeAvailability request
 function handleChangeAvailability(request: any) {
     return {
@@ -213,6 +258,89 @@ function handleUnlockConnector(request: any) {
     };
 }
 
+// Handle incoming Core profile GetDiagnostics request
+function handleGetDiagnostics(request: any) {
+    return {
+        fileName: `diagnostics_${Date.now()}.zip`
+    };
+}
+
+// Handle incoming Core profile UpdateFirmware request
+function handleUpdateFirmware(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
+// Handle incoming Core profile GetLocalListVersion request
+function handleGetLocalListVersion(request: any) {
+    return {
+        listVersion: randomIntBetween(1, 100)
+    };
+}
+
+// Handle incoming Core profile SendLocalList request
+function handleSendLocalList(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
+// Handle incoming Core profile ReserveNow request
+function handleReserveNow(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
+// Handle incoming Core profile CancelReservation request
+function handleCancelReservation(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
+// Handle incoming Core profile SetChargingProfile request
+function handleSetChargingProfile(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
+// Handle incoming Core profile ClearChargingProfile request
+function handleClearChargingProfile(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
+// Handle incoming Core profile GetCompositeSchedule request
+function handleGetCompositeSchedule(request: any) {
+    return {
+        status: 'Accepted',
+        connectorId: request.connectorId,
+        scheduleStart: new Date(Date.now() + 60000).toISOString(),
+        chargingSchedule: {
+            duration: 3600,
+            startSchedule: new Date().toISOString(),
+            chargingRateUnit: 'A',
+            chargingSchedulePeriod: [
+                {
+                    startPeriod: 0,
+                    limit: 32
+                }
+            ]
+        }
+    };
+}
+
+// Handle incoming Core profile TriggerMessage request
+function handleTriggerMessage(request: any) {
+    return {
+        status: 'Accepted'
+    };
+}
+
 // Route incoming Core profile requests to appropriate handlers
 function handleIncomingRequest(action: string, payload: any, messageId: string) {
     let response;
@@ -245,6 +373,36 @@ function handleIncomingRequest(action: string, payload: any, messageId: string) 
                 break;
             case INCOMING_ACTIONS.UNLOCK_CONNECTOR:
                 response = handleUnlockConnector(payload);
+                break;
+            case INCOMING_ACTIONS.GET_DIAGNOSTICS:
+                response = handleGetDiagnostics(payload);
+                break;
+            case INCOMING_ACTIONS.UPDATE_FIRMWARE:
+                response = handleUpdateFirmware(payload);
+                break;
+            case INCOMING_ACTIONS.GET_LOCAL_LIST_VERSION:
+                response = handleGetLocalListVersion(payload);
+                break;
+            case INCOMING_ACTIONS.SEND_LOCAL_LIST:
+                response = handleSendLocalList(payload);
+                break;
+            case INCOMING_ACTIONS.RESERVE_NOW:
+                response = handleReserveNow(payload);
+                break;
+            case INCOMING_ACTIONS.CANCEL_RESERVATION:
+                response = handleCancelReservation(payload);
+                break;
+            case INCOMING_ACTIONS.SET_CHARGING_PROFILE:
+                response = handleSetChargingProfile(payload);
+                break;
+            case INCOMING_ACTIONS.CLEAR_CHARGING_PROFILE:
+                response = handleClearChargingProfile(payload);
+                break;
+            case INCOMING_ACTIONS.GET_COMPOSITE_SCHEDULE:
+                response = handleGetCompositeSchedule(payload);
+                break;
+            case INCOMING_ACTIONS.TRIGGER_MESSAGE:
+                response = handleTriggerMessage(payload);
                 break;
             default:
                 console.log(`VU ${__VU}: Unknown incoming action: ${action}`);
@@ -282,16 +440,15 @@ export default function () {
     const startTime = Date.now();
     let messageCount = 0;
     let reconnectCount = 0;
-    const maxReconnects = randomIntBetween(3, 8); // Random number of reconnections per VU
+    let maxReconnects = 10;
 
-    // Main connection loop with rapid connect/disconnect
-    for (let i = 0; i < maxReconnects; i++) {
+    while (reconnectCount < maxReconnects) {
         const res = ws.connect(url, params, function (socket) {
             const connectionStart = Date.now();
 
             socket.on('open', function open() {
                 const connectTime = Date.now() - connectionStart;
-                console.log(`VU ${__VU}: Connected in ${connectTime}ms (attempt ${i + 1}/${maxReconnects})`);
+                console.log(`VU ${__VU}: Connected in ${connectTime}ms (attempt ${reconnectCount + 1}/${maxReconnects})`);
 
                 // Send BootNotification immediately after connection
                 const bootMsg = createBootNotification(chargePointId);
@@ -300,8 +457,14 @@ export default function () {
 
                 // Disconnect after random time (100-200ms)
                 const disconnectDelay = randomIntBetween(100, 200);
-                setTimeout(() => {
-                    console.log(`VU ${__VU}: Disconnecting after ${disconnectDelay}ms`);
+
+                socket.setInterval(function timeout() {
+                    socket.ping();
+                    console.log('Pinging');
+                }, disconnectDelay - 10);
+
+                socket.setTimeout(function () {
+                    console.log(`${disconnectDelay} ms passed, closing the socket`);
                     socket.close();
                 }, disconnectDelay);
             });
@@ -345,11 +508,7 @@ export default function () {
             });
         });
 
-        // Verify connection was successful
-        check(res, {
-            'Connected successfully': (r) => r && r.status === 101,
-            'Connection time < 200ms': (r) => r && (Date.now() - startTime) < 200
-        });
+        check(res, {'status is 101': (r) => r && r.status === 101});
 
         // Small delay between reconnections to avoid overwhelming the server
         sleep(randomIntBetween(50, 100) / 1000);
