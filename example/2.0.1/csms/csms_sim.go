@@ -301,7 +301,7 @@ func setupMetrics(address string) error {
 		metricsdk.WithReader(
 			metricsdk.NewPeriodicReader(
 				exporter,
-				metricsdk.WithInterval(10*time.Second),
+				metricsdk.WithInterval(100*time.Millisecond),
 			),
 		),
 		metricsdk.WithResource(resource),
