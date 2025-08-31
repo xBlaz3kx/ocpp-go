@@ -3,7 +3,6 @@ package ws
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +12,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // ---------------------- SERVER ----------------------
@@ -148,6 +150,7 @@ type server struct {
 	connMutex         sync.RWMutex
 	addr              *net.TCPAddr
 	httpHandler       *mux.Router
+	metrics               *serverMetrics
 }
 
 // ServerOpt is a function that can be used to set options on a server during creation.
@@ -173,6 +176,19 @@ func WithCompression(enabled bool) ServerOpt {
 	}
 }
 
+// WithServerMeterProvider sets the meter provider for server metrics.
+// It will create metrics with the given provider and attach them to the server.
+func WithServerMeterProvider(meterProvider metric.MeterProvider) ServerOpt {
+	return func(s *server) {
+		m, err := newServerMetrics(meterProvider)
+		if err != nil {
+			return
+		}
+
+		s.metrics = m
+	}
+}
+
 // NewServer Creates a new websocket server.
 //
 // Additional options may be added using the AddOption function.
@@ -191,6 +207,14 @@ func WithCompression(enabled bool) ServerOpt {
 //
 // When TLS is correctly configured, the server will automatically use it for all created websocket channels.
 func NewServer(opts ...ServerOpt) Server {
+	// Note: If metrics are not configured, a noop meter provider is used and no metrics are exported.
+	meterProvider := otel.GetMeterProvider()
+	serverMetrics, err := newServerMetrics(meterProvider)
+	if err != nil {
+		// todo improve error handling
+		log.Error(errors.Wrap(err, "Error creating websocket server metrics"))
+	}
+
 	router := mux.NewRouter()
 	s := &server{
 		httpServer:    &http.Server{},
@@ -201,6 +225,7 @@ func NewServer(opts ...ServerOpt) Server {
 			url := r.URL
 			return path.Base(url.Path), nil
 		},
+		metrics: serverMetrics,
 	}
 	for _, o := range opts {
 		o(s)
@@ -296,10 +321,9 @@ func (s *server) Start(port int, listenPath string) {
 		s.error(fmt.Errorf("failed to listen: %w", err))
 		return
 	}
+	defer ln.Close()
 
 	s.addr = ln.Addr().(*net.TCPAddr)
-
-	defer ln.Close()
 
 	log.Infof("listening on tcp network %v", addr)
 	s.httpServer.RegisterOnShutdown(s.stopConnections)
@@ -316,7 +340,7 @@ func (s *server) Start(port int, listenPath string) {
 
 func (s *server) Stop() {
 	log.Info("stopping websocket server")
-	err := s.httpServer.Shutdown(context.TODO())
+	err := s.httpServer.Shutdown(context.Background())
 	if err != nil {
 		s.error(fmt.Errorf("shutdown failed: %w", err))
 	}
@@ -362,6 +386,9 @@ func (s *server) Write(webSocketId string, data []byte) error {
 		return fmt.Errorf("couldn't write to websocket. No socket with id %v is open", webSocketId)
 	}
 	log.Debugf("queuing data for websocket %s", webSocketId)
+
+	s.metrics.RecordMessageRate(context.Background(), webSocketId, directionOutbound)
+
 	return w.Write(data)
 }
 
@@ -473,6 +500,9 @@ out:
 	// Add new client
 	s.connections[ws.id] = ws
 	s.connMutex.Unlock()
+
+	s.metrics.IncrementChargePoints()
+
 	// Start reader and write routine
 	ws.run()
 	if s.newClientHandler != nil {
@@ -484,6 +514,7 @@ out:
 // --------- Internal callbacks webSocket -> server ---------
 func (s *server) handleMessage(w Channel, data []byte) error {
 	if s.messageHandler != nil {
+		s.metrics.RecordMessageRate(context.Background(), w.ID(), directionInbound)
 		return s.messageHandler(w, data)
 	}
 	return fmt.Errorf("no message handler set")
@@ -498,4 +529,6 @@ func (s *server) handleDisconnect(w Channel, _ error) {
 	if s.disconnectedHandler != nil {
 		s.disconnectedHandler(w)
 	}
+
+	s.metrics.DecrementChargePoints()
 }

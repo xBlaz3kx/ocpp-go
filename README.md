@@ -22,7 +22,7 @@ There are currently no plans of supporting OCPP-S.
 
 ## Installation
 
-Go version 1.13+ is required.
+Go version 1.22+ is required.
 
 ```sh
 go get github.com/xBlaz3kx/ocpp-go@latest
