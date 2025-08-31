@@ -22,7 +22,7 @@ services:
     image: grafana/k6:latest
     container_name: k6
     # Run the performance tests
-    command: run -o experimental-prometheus-rw /scripts/disconnects.ts --vus 10 --duration 1m
+    command: run -o experimental-prometheus-rw /scripts/rapid-connect-disconnect.ts --vus 10 --duration 1m
     depends_on:
       - cpms
       - grafana-lgtm-stack
