@@ -10,3 +10,9 @@ example-ocpp-16:
 # Run the example with LGTM stack and observability enabled by default:
 example-ocpp16-observability:
 	METRICS_ENABLED=true docker compose -f example/1.6/docker-compose.yml -f example/docker-compose.observability.yaml up --build
+
+perf-tests-ocpp16:
+	docker compose -f example/1.6/docker-compose.k6.yml -f example/docker-compose.observability.yaml up --build
+
+perf-tests-ocpp201:
+	docker compose -f example/2.0.1/docker-compose.k6.yml -f example/docker-compose.observability.yaml up --build

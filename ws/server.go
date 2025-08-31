@@ -411,7 +411,7 @@ out:
 			negotiatedSubProtocol = requestedProto
 			break
 		}
-		// Check if requested suprotocol is supported by server
+		// Check if requested subprotocol is supported by server
 		for _, supportedProto := range s.upgrader.Subprotocols {
 			if requestedProto == supportedProto {
 				negotiatedSubProtocol = requestedProto
