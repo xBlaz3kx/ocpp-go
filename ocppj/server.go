@@ -54,13 +54,9 @@ func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler Ser
 	}
 
 	if dispatcher == nil {
-		perClientQueue := NewFIFOQueueMap(0)
-
-		// Observe queue lengths
-		metrics.ObserveRequestQueue(context.Background(), perClientQueue)
-
-		dispatcher = NewDefaultServerDispatcher(perClientQueue)
+		dispatcher = NewDefaultServerDispatcher(NewFIFOQueueMap(0), meterProvider)
 	}
+
 	if stateHandler == nil {
 		d, ok := dispatcher.(*DefaultServerDispatcher)
 		if !ok {
@@ -69,9 +65,11 @@ func NewServer(wsServer ws.Server, dispatcher ServerDispatcher, stateHandler Ser
 			stateHandler = d.pendingRequestState
 		}
 	}
+
 	if wsServer == nil {
 		wsServer = ws.NewServer()
 	}
+
 	dispatcher.SetNetworkServer(wsServer)
 	dispatcher.SetPendingRequestState(stateHandler)
 
