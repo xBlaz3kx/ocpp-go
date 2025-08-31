@@ -12,7 +12,6 @@ import (
 const (
 	requestsInboundMetric  = "ocpp_requests_inbound"
 	requestsOutboundMetric = "ocpp_requests_outbound"
-	requestQueueMetric     = "ocpp_request_queue_size"
 )
 
 const (
@@ -33,10 +32,9 @@ var (
 )
 
 type ocppMetrics struct {
-	requestsIn         metric.Int64Histogram
-	requestsOut        metric.Int64Histogram
-	requestQueueMetric metric.Int64ObservableGauge
-	meter              metric.Meter
+	requestsIn  metric.Int64Histogram
+	requestsOut metric.Int64Histogram
+	meter       metric.Meter
 }
 
 // newOcppServerMetrics Creates a new metrics instance
@@ -66,19 +64,10 @@ func newOcppServerMetrics(meterProvider metric.MeterProvider, ocppVersion string
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to create %s metric", requestsOutboundMetric))
 	}
 
-	queueSize, err := meter.Int64ObservableGauge(
-		requestQueueMetric,
-		metric.WithDescription("Current queue length"),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to create %s metric", requestQueueMetric))
-	}
-
 	metrics := &ocppMetrics{
-		requestsIn:         requestsIn,
-		requestsOut:        requestsOut,
-		requestQueueMetric: queueSize,
-		meter:              meter,
+		requestsIn:  requestsIn,
+		requestsOut: requestsOut,
+		meter:       meter,
 	}
 	return metrics, nil
 }
@@ -117,17 +106,4 @@ func (m *ocppMetrics) IncrementOutboundRequests(ctx context.Context, chargePoint
 
 	metricAttrs := metric.WithAttributes(attrs...)
 	m.requestsOut.Record(ctx, 1, metricAttrs)
-}
-
-func (m *ocppMetrics) ObserveRequestQueue(ctx context.Context, queueMap ServerQueueMap) {
-	_, err := m.meter.RegisterCallback(
-		func(ctx context.Context, observer metric.Observer) error {
-			observer.ObserveInt64(m.requestQueueMetric, int64(queueMap.Size()))
-			return nil
-		},
-		m.requestQueueMetric,
-	)
-	if err != nil {
-		log.Error(err)
-	}
 }

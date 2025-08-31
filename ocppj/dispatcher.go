@@ -3,6 +3,7 @@ package ocppj
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/metric"
 	"sync"
 	"time"
 
@@ -373,6 +374,7 @@ type DefaultServerDispatcher struct {
 	onRequestCancel     CanceledRequestHandler
 	network             ws.Server
 	mutex               sync.RWMutex
+	metrics             *dispatcherMetrics
 }
 
 // Handler function to be invoked when a request gets canceled (either due to timeout or to other external factors).
@@ -389,14 +391,25 @@ func (c clientTimeoutContext) isActive() bool {
 }
 
 // NewDefaultServerDispatcher creates a new DefaultServerDispatcher struct.
-func NewDefaultServerDispatcher(queueMap ServerQueueMap) *DefaultServerDispatcher {
+func NewDefaultServerDispatcher(queueMap ServerQueueMap, provider metric.MeterProvider) *DefaultServerDispatcher {
+	dispatcherMetrics, err := newDispatcherMetrics(provider)
+	if err != nil {
+		log.Errorf("failed to create dispatcher metrics: %v", err)
+		return nil
+	}
+
 	d := &DefaultServerDispatcher{
 		queueMap:         queueMap,
 		requestChannel:   nil,
 		readyForDispatch: make(chan string, 1),
 		timeout:          defaultMessageTimeout,
+		metrics:          dispatcherMetrics,
 	}
 	d.pendingRequestState = NewServerState(&d.mutex)
+
+	dispatcherMetrics.ObserveQueues(queueMap)
+	dispatcherMetrics.ObserveInFlightRequests(d.pendingRequestState.(*serverState))
+
 	return d
 }
 
