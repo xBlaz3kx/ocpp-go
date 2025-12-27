@@ -5,10 +5,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/grafana/pyroscope-go"
 	"os"
+	"os/signal"
 	"strconv"
 	"time"
+
+	"github.com/grafana/pyroscope-go"
+	"github.com/lorenzodonini/ocpp-go/ocppj"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -29,7 +32,6 @@ import (
 	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/remotecontrol"
 	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/reservation"
 	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/lorenzodonini/ocpp-go/ws"
 )
 
@@ -50,12 +52,11 @@ const (
 var log *logrus.Logger
 var csms ocpp2.CSMS
 
-func setupCentralSystem() ocpp2.CSMS {
-	csms, _ := ocpp2.NewCSMS(nil, nil)
-	return csms
+func setupCentralSystem() (ocpp2.CSMS, error) {
+	return ocpp2.NewCSMS(nil, nil)
 }
 
-func setupTlsCentralSystem() ocpp2.CSMS {
+func setupTlsCentralSystem() (ocpp2.CSMS, error) {
 	var certPool *x509.CertPool
 	// Load CA certificates
 	caCertificate, ok := os.LookupEnv(envVarCaCertificate)
@@ -89,9 +90,7 @@ func setupTlsCentralSystem() ocpp2.CSMS {
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,
 	}))
-
-	csms, _ := ocpp2.NewCSMS(nil, server)
-	return csms
+	return ocpp2.NewCSMS(nil, server)
 }
 
 // Run for every connected Charging Station, to simulate some functionality
@@ -241,10 +240,13 @@ func exampleRoutine(chargingStationID string, handler *CSMSHandler) {
 		}
 	}
 	var currentTx int
+	handler.mu.RLock()
 	for txID := range handler.chargingStations[chargingStationID].transactions {
 		currentTx = txID
 		break
 	}
+	handler.mu.RUnlock()
+
 	e = csms.SetDisplayMessage(chargingStationID, cb7, display.MessageInfo{
 		ID:            42,
 		Priority:      display.MessagePriorityInFront,
@@ -264,18 +266,15 @@ func exampleRoutine(chargingStationID string, handler *CSMSHandler) {
 }
 
 // sets up OTLP metrics exporter
-func setupMetrics(address string) error {
+func setupMetrics(ctx context.Context, address string) error {
 	grpcOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
 	client, err := grpc.NewClient(address, grpcOpts...)
-
 	if err != nil {
 		return errors.Wrap(err, "failed to create gRPC connection to collector")
 	}
-
-	ctx := context.Background()
 
 	exporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(client))
 	if err != nil {
@@ -313,6 +312,12 @@ func setupMetrics(address string) error {
 
 // Start function
 func main() {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer cancel()
+
+	ocppj.SetLogger(log)
+	ws.SetLogger(log)
+
 	// Load config from ENV
 	var listenPort = defaultListenPort
 	port, _ := os.LookupEnv(envVarServerPort)
@@ -325,7 +330,7 @@ func main() {
 	// Setup metrics if enabled
 	if t, _ := os.LookupEnv(envVarMetricsEnabled); t == "true" {
 		address, _ := os.LookupEnv(envVarMetricsAddress)
-		if err := setupMetrics(address); err != nil {
+		if err := setupMetrics(ctx, address); err != nil {
 			log.Error(err)
 			return
 		}
@@ -363,11 +368,15 @@ func main() {
 	// Check if TLS enabled
 	t, _ := os.LookupEnv(envVarTls)
 	tlsEnabled, _ := strconv.ParseBool(t)
+	var err error
 	// Prepare OCPP 1.6 central system
 	if tlsEnabled {
-		csms = setupTlsCentralSystem()
+		csms, err = setupTlsCentralSystem()
 	} else {
-		csms = setupCentralSystem()
+		csms, err = setupCentralSystem()
+	}
+	if err != nil {
+		log.Fatalf("couldn't create CSMS: %v", err)
 	}
 
 	// Support callbacks for all OCPP 2.0.1 profiles
@@ -383,20 +392,31 @@ func main() {
 	csms.SetReservationHandler(handler)
 	csms.SetTariffCostHandler(handler)
 	csms.SetTransactionsHandler(handler)
+
 	// Add handlers for dis/connection of charging stations
 	csms.SetNewChargingStationHandler(func(chargingStation ocpp2.ChargingStationConnection) {
+		handler.mu.Lock()
 		handler.chargingStations[chargingStation.ID()] = &ChargingStationState{connectors: map[int]*ConnectorInfo{}, transactions: map[int]*TransactionInfo{}}
+		handler.mu.Unlock()
+
 		log.WithField("client", chargingStation.ID()).Info("new charging station connected")
 		go exampleRoutine(chargingStation.ID(), handler)
 	})
 	csms.SetChargingStationDisconnectedHandler(func(chargingStation ocpp2.ChargingStationConnection) {
 		log.WithField("client", chargingStation.ID()).Info("charging station disconnected")
+		handler.mu.Lock()
 		delete(handler.chargingStations, chargingStation.ID())
+		handler.mu.Unlock()
 	})
-	ocppj.SetLogger(log)
+
 	// Run CSMS
 	log.Infof("starting CSMS on port %v", listenPort)
-	csms.Start(listenPort, "/{ws}")
+	go csms.Start(listenPort, "/{ws}")
+
+	<-ctx.Done()
+	// Shutdown CSMS
+	log.Info("stopping CSMS")
+	csms.Stop()
 	log.Info("stopped CSMS")
 }
 

@@ -11,7 +11,6 @@ on:
       - LICENSE
 
   workflow_dispatch:
-
 jobs:
   unit:
     runs-on: ubuntu-latest
@@ -50,6 +49,56 @@ jobs:
         with:
           name: coverage_${{ github.sha }}
           path: ./coverage.out
+
+  performance:
+    name: Performance tests
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Run OCPP 1.6 performance tests
+        id: ocpp16-perf-test
+        run: |
+          make perf-tests-ocpp16-ci
+          echo "SUMMARY_16=$(jq -r '${{ github.workspace }}/results' summary_16.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Run OCPP 2.0.1 performance tests
+        id: ocpp201-perf-test
+        run: |
+          make perf-tests-ocpp201-ci
+          echo "SUMMARY_201=$(jq -r '${{ github.workspace }}/results' summary_201.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Report performance test results
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{ github.workspace }}/results
+          name: performance_test_results_${{ github.sha }}
+          retention-days: 14
+
+      - name: Post summary to PR
+        continue-on-error: true
+        uses: thollander/actions-comment-pull-request@v3
+        if: github.event_name == 'pull_request'
+        with:
+          message: |
+            ## Performance Test Results
+            
+            ### OCPP 1.6
+            ```json
+            ${{steps.ocpp16-perf-test.outputs.SUMMARY_16}}
+            ```
+            
+            ### OCPP 2.0.1
+            ```json
+            ${{steps.ocpp201-perf-test.outputs.SUMMARY_201}}
+            ```
+
+          pr-number: ${{ github.event.pull_request.number }}
+          comment-tag: execution
 
   publish_coverage:
     runs-on: ubuntu-latest
