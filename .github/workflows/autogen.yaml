@@ -6,6 +6,9 @@ on:
   pull_request:
     paths-ignore:
       - '*.md'
+      - 'example/**'
+      - 'docs/**'
+      - 'Makefile'
 
 jobs:
   mockery:
@@ -39,7 +42,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.10.0
         with: # Grab a specific tag
           repo: vektra/mockery
-          tag: v2.51.0
+          tag: v2.53.5
 
       - name: Generate mocks
         run: mockery
