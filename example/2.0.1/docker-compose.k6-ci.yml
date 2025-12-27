@@ -14,11 +14,7 @@ services:
       - csms
     networks:
       - sim
-    command: |
-      run /scripts/rapid-connect-disconnect.ts \
-      --vus 10 --duration 30s \ 
-      --out json=ocpp_201.json \ 
-      --summary-export=summary_201.json \
+    command: run /scripts/rapid-connect-disconnect.ts --vus 10 --duration 30s --out json=ocpp_201.json --summary-export=summary_201.json
     volumes:
       - ./k6:/scripts
       - ./results:/home/k6

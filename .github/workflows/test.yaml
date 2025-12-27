@@ -61,37 +61,38 @@ jobs:
 
       - name: Run OCPP 1.6 performance tests
         run: |
-          # Wait for all to complete before finishing
           make perf-tests-ocpp16-ci
+
+      - name: Run OCPP 2.0.1 performance tests
+        run: |
           make perf-tests-ocpp201-ci
 
       - name: Report performance  test results
         uses: actions/upload-artifact@v4
         with:
-          path: ./results/**
+          path: ./results
           name: performance_test_results_${{ github.sha }}
           retention-days: 14
 
       - name: Post summary to PR
         uses: actions/github-script@v6
         with:
-          github-token: ${{ inputs.github-token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const path = "./results/summary_201.json"
             const pr = context.payload.pull_request;
-            if !(fs.existsSync(path)) {
-              return
+            if (fs.existsSync(path)) {
+               let content = fs.readFileSync(path, 'utf8').trim();
+               if (content.length > 6000) content = content.slice(0, 6000) + '\n\n(truncated)';
+               body = `### ${process.env.TITLE}\n\`\`\`\n${content}\n\`\`\``;
+               await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body
+               })
             }
-            let content = fs.readFileSync(path, 'utf8').trim();
-            if (content.length > 6000) content = content.slice(0, 6000) + '\n\n(truncated)';
-             body = `### ${process.env.TITLE}\n\`\`\`\n${content}\n\`\`\``;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              body
-            })
 
   publish_coverage:
     runs-on: ubuntu-latest

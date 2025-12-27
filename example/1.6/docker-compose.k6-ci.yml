@@ -5,7 +5,7 @@ services:
     image: grafana/k6:latest
     # Run the performance tests
     user: ${UID}:${GID}
-    command: run /scripts/rapid-connect-disconnect.ts --vus 10 --duration 30s --out json=ocpp_16.json
+    command: run /scripts/rapid-connect-disconnect.ts --vus 10 --duration 30s --out json=ocpp_16.json --summary-export=summary_16.json
     depends_on:
       - central-system
     networks:
