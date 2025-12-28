@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel/metric/noop"
 )
 
 // ---------------------- MOCK WEBSOCKET ----------------------
@@ -672,7 +673,7 @@ func (suite *OcppV16TestSuite) SetupTest() {
 	suite.mockWsClient = &mockClient
 	suite.mockWsServer = &mockServer
 	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(queueCapacity))
-	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity))
+	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity), noop.NewMeterProvider())
 	suite.ocppjChargePoint = ocppj.NewClient(
 		"test_id",
 		suite.mockWsClient,

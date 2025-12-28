@@ -33,3 +33,9 @@ perf-tests-ocpp201:
 	docker compose -f example/1.6/docker-compose.yml \
 	               -f example/2.0.1/docker-compose.k6.yml \
 	               -f example/docker-compose.observability.yaml up --build
+
+lint:
+	golangci-lint run
+
+format:
+	golangci-lint fmt
