@@ -2,7 +2,6 @@ package ocppj_test
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -286,7 +285,7 @@ func (c *ClientDispatcherTestSuite) TestClientRequestCanceled() {
 	errMsg := "mockError"
 	c.websocketClient.On("Write", mock.Anything).Run(func(args mock.Arguments) {
 		<-writeC
-	}).Return(fmt.Errorf(errMsg))
+	}).Return(errors.New(errMsg))
 	// Create mock request
 	req := newMockRequest("somevalue")
 	call, err := c.endpoint.CreateCall(req)
