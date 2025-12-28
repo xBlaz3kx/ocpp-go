@@ -1,7 +1,10 @@
 .PHONY: test example-ocpp-201 example-ocpp-16 perf-tests-ocpp16 perf-tests-ocpp201 perf-tests-ocpp16-ci perf-tests-ocpp201-ci
 
-test:
-	docker compose -f docker-compose.test.yaml up toxiproxy integration_test --abort-on-container-exit
+integration-tests:
+	docker compose -f docker-compose.test.yaml up toxiproxy integration_test --abort-on-container-exit --exit-code-from integration_test
+
+unit-tests:
+	docker compose -f docker-compose.test.yaml up unit_test --abort-on-container-exit --exit-code-from unit_test
 
 example-ocpp-201:
 	docker compose -f example/2.0.1/docker-compose.yml up --build
