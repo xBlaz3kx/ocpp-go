@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	ut "github.com/go-playground/universal-translator"
+	"go.opentelemetry.io/otel/metric/noop"
 
 	"github.com/lorenzodonini/ocpp-go/logging"
 
@@ -375,7 +376,7 @@ func (suite *OcppJTestSuite) SetupTest() {
 	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(suite.clientRequestQueue)
 	suite.chargePoint = ocppj.NewClient("mock_id", suite.mockClient, suite.clientDispatcher, nil, mockProfile)
 	suite.serverRequestMap = ocppj.NewFIFOQueueMap(queueCapacity)
-	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap)
+	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap, noop.NewMeterProvider())
 	suite.centralSystem = ocppj.NewServer(suite.mockServer, suite.serverDispatcher, nil, mockProfile)
 	defaultDialect := ocpp.V16 // set default to version 1.6 format error *for test only
 	suite.centralSystem.SetDialect(defaultDialect)

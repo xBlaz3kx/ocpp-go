@@ -1,12 +1,14 @@
 package ocppj_test
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel/metric/noop"
 
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ocppj"
@@ -27,7 +29,7 @@ func (s *ServerDispatcherTestSuite) SetupTest() {
 	mockProfile := ocpp.NewProfile("mock", &MockFeature{})
 	s.endpoint.AddProfile(mockProfile)
 	s.queueMap = ocppj.NewFIFOQueueMap(10)
-	s.dispatcher = ocppj.NewDefaultServerDispatcher(s.queueMap)
+	s.dispatcher = ocppj.NewDefaultServerDispatcher(s.queueMap, noop.NewMeterProvider())
 	s.state = ocppj.NewServerState(&s.mutex)
 	s.dispatcher.SetPendingRequestState(s.state)
 	s.websocketServer = MockWebsocketServer{}
@@ -91,7 +93,7 @@ func (s *ServerDispatcherTestSuite) TestServerRequestCanceled() {
 		id, _ := args.Get(0).(string)
 		s.Assert().Equal(clientID, id)
 		<-writeC
-	}).Return(fmt.Errorf(errMsg))
+	}).Return(errors.New(errMsg))
 	// Create mock request
 	req := newMockRequest("somevalue")
 	call, err := s.endpoint.CreateCall(req)
