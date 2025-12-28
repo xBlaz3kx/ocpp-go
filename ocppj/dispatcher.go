@@ -2,9 +2,11 @@ package ocppj
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go.opentelemetry.io/otel/metric"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lorenzodonini/ocpp-go/ocpp"
@@ -95,7 +97,7 @@ type DefaultClientDispatcher struct {
 	mutex               sync.RWMutex
 	onRequestCancel     func(requestID string, request ocpp.Request, err *ocpp.Error)
 	timer               *time.Timer
-	paused              bool
+	paused              atomic.Bool
 	timeout             time.Duration
 }
 
@@ -125,9 +127,10 @@ func (d *DefaultClientDispatcher) SetTimeout(timeout time.Duration) {
 
 func (d *DefaultClientDispatcher) Start() {
 	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	d.requestChannel = make(chan bool, 1)
 	d.timer = time.NewTimer(defaultTimeoutTick) // Default to 24 hours tick
+	d.mutex.Unlock()
+
 	go d.messagePump()
 }
 
@@ -138,14 +141,10 @@ func (d *DefaultClientDispatcher) IsRunning() bool {
 }
 
 func (d *DefaultClientDispatcher) IsPaused() bool {
-	d.mutex.RLock()
-	defer d.mutex.RUnlock()
-	return d.paused
+	return d.paused.Load()
 }
 
 func (d *DefaultClientDispatcher) Stop() {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	close(d.requestChannel)
 	// TODO: clear pending requests?
 }
@@ -166,23 +165,20 @@ func (d *DefaultClientDispatcher) SendRequest(req RequestBundle) error {
 		return err
 	}
 	d.mutex.RLock()
-	d.requestChannel <- true
+	if d.requestChannel != nil {
+		d.requestChannel <- true
+	}
 	d.mutex.RUnlock()
+
 	return nil
 }
 
 func (d *DefaultClientDispatcher) messagePump() {
 	rdy := true // Ready to transmit at the beginning
 
-	reqChan := func() chan bool {
-		d.mutex.RLock()
-		defer d.mutex.RUnlock()
-		return d.requestChannel
-	}
-
 	for {
 		select {
-		case _, ok := <-reqChan():
+		case _, ok := <-d.requestChannel:
 			// New request was posted
 			if !ok {
 				d.requestQueue.Init()
@@ -257,14 +253,13 @@ func (d *DefaultClientDispatcher) Pause() {
 	if !d.timer.Stop() {
 		<-d.timer.C
 	}
+
 	d.timer.Reset(defaultTimeoutTick)
-	d.paused = true
+	d.paused.Store(true)
 }
 
 func (d *DefaultClientDispatcher) Resume() {
-	d.mutex.Lock()
-	d.paused = false
-	d.mutex.Unlock()
+	d.paused.Store(false)
 	if d.pendingRequestState.HasPendingRequest() {
 		// There is a pending request already. Awaiting response, before dispatching new requests.
 		d.timer.Reset(d.timeout)
@@ -369,7 +364,7 @@ type DefaultServerDispatcher struct {
 	pendingRequestState ServerState
 	timeout             time.Duration
 	timerC              chan string
-	running             bool
+	running             atomic.Bool
 	stoppedC            chan struct{}
 	onRequestCancel     CanceledRequestHandler
 	network             ws.Server
@@ -400,8 +395,10 @@ func NewDefaultServerDispatcher(queueMap ServerQueueMap, provider metric.MeterPr
 
 	d := &DefaultServerDispatcher{
 		queueMap:         queueMap,
-		requestChannel:   nil,
+		requestChannel:   make(chan string, 20),
 		readyForDispatch: make(chan string, 1),
+		timerC:           make(chan string, 10),
+		stoppedC:         make(chan struct{}, 1),
 		timeout:          defaultMessageTimeout,
 		metrics:          dispatcherMetrics,
 	}
@@ -414,26 +411,29 @@ func NewDefaultServerDispatcher(queueMap ServerQueueMap, provider metric.MeterPr
 }
 
 func (d *DefaultServerDispatcher) Start() {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-	d.requestChannel = make(chan string, 20)
+	d.running.Store(true)
+
+	d.queueMap.Init()
+	d.requestChannel = make(chan string, 30)
+	d.readyForDispatch = make(chan string, 1)
 	d.timerC = make(chan string, 10)
 	d.stoppedC = make(chan struct{}, 1)
-	d.running = true
+
 	go d.messagePump()
 }
 
 func (d *DefaultServerDispatcher) IsRunning() bool {
-	d.mutex.RLock()
-	defer d.mutex.RUnlock()
-	return d.running
+	return d.running.Load()
 }
 
 func (d *DefaultServerDispatcher) Stop() {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-	d.running = false
+	d.running.Store(false)
+
+	// Close all channels
 	close(d.stoppedC)
+	close(d.readyForDispatch)
+	close(d.timerC)
+	close(d.requestChannel)
 }
 
 func (d *DefaultServerDispatcher) SetTimeout(timeout time.Duration) {
@@ -449,9 +449,7 @@ func (d *DefaultServerDispatcher) CreateClient(clientID string) {
 func (d *DefaultServerDispatcher) DeleteClient(clientID string) {
 	d.queueMap.Remove(clientID)
 	if d.IsRunning() {
-		d.mutex.RLock()
 		d.requestChannel <- clientID
-		d.mutex.RUnlock()
 	}
 }
 
@@ -478,9 +476,9 @@ func (d *DefaultServerDispatcher) SendRequest(clientID string, req RequestBundle
 	if err := q.Push(req); err != nil {
 		return err
 	}
-	d.mutex.RLock()
+
 	d.requestChannel <- clientID
-	d.mutex.RUnlock()
+
 	return nil
 }
 
@@ -494,12 +492,6 @@ func (d *DefaultServerDispatcher) messagePump() {
 	var clientQueue RequestQueue
 	clientContextMap := map[string]clientTimeoutContext{} // Empty at the beginning
 
-	reqChan := func() chan string {
-		d.mutex.RLock()
-		defer d.mutex.RUnlock()
-		return d.requestChannel
-	}
-
 	// Dispatcher Loop
 	for {
 		select {
@@ -508,7 +500,11 @@ func (d *DefaultServerDispatcher) messagePump() {
 			d.queueMap.Init()
 			log.Info("stopped processing requests")
 			return
-		case clientID = <-reqChan():
+		case clientID, ok = <-d.requestChannel:
+			// Request channel closed, stopping dispatcher
+			if !ok {
+				continue
+			}
 			// Check whether there is a request queue for the specified client
 			clientQueue, ok = d.queueMap.Get(clientID)
 			if !ok {
@@ -633,14 +629,17 @@ func (d *DefaultServerDispatcher) waitForTimeout(clientID string, clientCtx clie
 	select {
 	case <-clientCtx.ctx.Done():
 		err := clientCtx.ctx.Err()
-		if err == context.DeadlineExceeded {
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
 			// Timeout triggered, notifying messagePump
 			d.mutex.RLock()
-			defer d.mutex.RUnlock()
-			if d.running {
-				d.timerC <- clientID
+			running := d.running.Load()
+			timerC := d.timerC
+			d.mutex.RUnlock()
+			if running && timerC != nil {
+				timerC <- clientID
 			}
-		} else {
+		default:
 			log.Debugf("timeout canceled for %s", clientID)
 		}
 	case <-d.stoppedC:

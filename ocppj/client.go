@@ -52,7 +52,13 @@ func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, state
 	}
 	dispatcher.SetNetworkClient(wsClient)
 	dispatcher.SetPendingRequestState(stateHandler)
-	return &Client{Endpoint: endpoint, client: wsClient, Id: id, dispatcher: dispatcher, RequestState: stateHandler}
+	return &Client{
+		Endpoint:     endpoint,
+		client:       wsClient,
+		Id:           id,
+		dispatcher:   dispatcher,
+		RequestState: stateHandler,
+	}
 }
 
 // Return incoming requests handler.
