@@ -10,13 +10,13 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"go.opentelemetry.io/otel/metric/noop"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
-	"github.com/lorenzodonini/ocpp-go/ws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ocppj"
+	"github.com/xBlaz3kx/ocpp-go/ws"
 	"gopkg.in/go-playground/validator.v9"
 )
 

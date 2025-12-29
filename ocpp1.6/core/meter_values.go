@@ -3,7 +3,7 @@ package core
 import (
 	"reflect"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
 )
 
 // -------------------- MeterValues (CP -> CS) --------------------

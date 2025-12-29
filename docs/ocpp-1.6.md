@@ -7,8 +7,8 @@ profile interfaces, e.g.:
 
 ```go
 import (
-"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
 "time"
 )
 
@@ -147,8 +147,8 @@ profile interfaces, e.g.:
 
 ```go
 import (
-"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
 )
 
 type ChargePointHandler struct {
@@ -318,11 +318,11 @@ Here's a quick example:
 package main
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/smartcharging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/smartcharging"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
-	configManager "github.com/lorenzodonini/ocpp-go/ocpp1.6/config_manager"
+	configManager "github.com/xBlaz3kx/ocpp-go/ocpp1.6/config_manager"
 )
 
 func main() {

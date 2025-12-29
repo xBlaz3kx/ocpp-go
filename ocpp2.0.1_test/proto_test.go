@@ -3,11 +3,11 @@ package ocpp2_test
 import (
 	"fmt"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/data"
+	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/data"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/stretchr/testify/mock"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
 
 func (suite *OcppV2TestSuite) TestChargePointSendResponseError() {

@@ -3,10 +3,10 @@ package ocpp16_test
 import (
 	"fmt"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/security"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6_test/mocks"
 	"github.com/stretchr/testify/mock"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/security"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6_test/mocks"
 )
 
 // Test

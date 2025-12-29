@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
 	"github.com/stretchr/testify/mock"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/firmware"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
 )
 
 // Test

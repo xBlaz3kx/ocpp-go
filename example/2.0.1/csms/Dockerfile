@@ -4,7 +4,7 @@
 FROM golang:1.25-alpine AS builder
 
 ENV GO111MODULE on
-WORKDIR $GOPATH/src/github.com/lorenzodonini/ocpp-go
+WORKDIR $GOPATH/src/github.com/xBlaz3kx/ocpp-go
 COPY . .
 # Fetch dependencies.
 RUN go mod download

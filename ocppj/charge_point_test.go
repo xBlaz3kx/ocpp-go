@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
 
 // ----------------- Start tests -----------------

@@ -6,9 +6,9 @@ import (
 
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ws"
+	"github.com/xBlaz3kx/ocpp-go/logging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ws"
 )
 
 // The endpoint initiating the connection to an OCPP server, in an OCPP-J topology.

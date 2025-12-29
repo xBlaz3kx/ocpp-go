@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6_test/mocks"
 	"github.com/stretchr/testify/mock"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/securefirmware"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6_test/mocks"
 )
 
 // Test

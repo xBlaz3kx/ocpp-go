@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/samber/lo"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
 )
 
 var (

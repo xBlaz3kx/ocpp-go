@@ -3,8 +3,8 @@ package ocpp16_test
 import (
 	"fmt"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/stretchr/testify/mock"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
 )
 
 func (suite *OcppV16TestSuite) TestChangeAvailabilityRequestValidation() {

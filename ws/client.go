@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/lorenzodonini/ocpp-go/logging"
+	"github.com/xBlaz3kx/ocpp-go/logging"
 )
 
 // ---------------------- CLIENT ----------------------

@@ -11,7 +11,7 @@ import (
 
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
 )
 
 var EscapeHTML atomic.Bool

@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/meter"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
+	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/meter"
+	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/types"
 )
 
 // Test

@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"time"
 
-	ocpp16 "github.com/lorenzodonini/ocpp-go/ocpp1.6"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/localauth"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/logging"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
-	"github.com/lorenzodonini/ocpp-go/ws"
 	"github.com/sirupsen/logrus"
+	ocpp16 "github.com/xBlaz3kx/ocpp-go/ocpp1.6"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/localauth"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/logging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
+	"github.com/xBlaz3kx/ocpp-go/ws"
 )
 
 const (

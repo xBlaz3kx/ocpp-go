@@ -3,8 +3,8 @@ package ocppj
 import (
 	"context"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/pkg/errors"
+	"github.com/xBlaz3kx/ocpp-go/logging"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
