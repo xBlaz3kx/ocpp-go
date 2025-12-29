@@ -41,20 +41,6 @@ const (
 	defaultRetryBackOffWaitMinimum = 10 * time.Second
 )
 
-// The internal verbose logger
-var log logging.Logger
-
-// Sets a custom Logger implementation, allowing the package to log events.
-// By default, a VoidLogger is used, so no logs will be sent to any output.
-//
-// The function panics, if a nil logger is passed.
-func SetLogger(logger logging.Logger) {
-	if logger == nil {
-		panic("cannot set a nil logger")
-	}
-	log = logger
-}
-
 // ServerTimeoutConfig contains optional configuration parameters for a websocket server.
 // Setting the parameter allows to define custom timeout intervals for websocket network operations.
 //
@@ -190,11 +176,13 @@ type PingConfig struct {
 // If sendPing is set, the websocket will be configured to send out periodic pings.
 //
 // No custom configuration functions are run. Overrides need to be applied externally.
+// If logger is nil, a VoidLogger will be used.
 func NewDefaultWebSocketConfig(
 	writeWait time.Duration,
 	readWait time.Duration,
 	pingPeriod time.Duration,
-	pongWait time.Duration) WebSocketConfig {
+	pongWait time.Duration,
+	logger logging.Logger) WebSocketConfig {
 	var pingCfg *PingConfig
 	if pingPeriod > 0 {
 		pingCfg = &PingConfig{
@@ -202,11 +190,14 @@ func NewDefaultWebSocketConfig(
 			PongWait:   pongWait,
 		}
 	}
+	if logger == nil {
+		logger = &logging.VoidLogger{}
+	}
 	return WebSocketConfig{
 		WriteWait:  writeWait,
 		ReadWait:   readWait,
 		PingConfig: pingCfg,
-		Logger:     log,
+		Logger:     logger,
 	}
 }
 
@@ -314,12 +305,12 @@ func (w *webSocket) updateConfig(cfg WebSocketConfig) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 	w.cfg = cfg
-	// Update logger
+
+	w.log = &logging.VoidLogger{}
 	if cfg.Logger != nil {
 		w.log = cfg.Logger
-	} else {
-		w.log = log
 	}
+
 	// Update ping pong logic
 	w.initPingPong()
 }
@@ -340,17 +331,15 @@ func (w *webSocket) getReadTimeout() time.Time {
 
 func (w *webSocket) initPingPong() {
 	conn := w.connection
+
 	if w.cfg.ReadWait > 0 {
 		// Expect pings, reply with pongs
 		conn.SetPingHandler(w.onPing)
-	} else {
-		conn.SetPingHandler(nil)
 	}
+
 	if w.cfg.PingConfig != nil {
 		// Optionally send pings, expect pongs
 		conn.SetPongHandler(w.onPong)
-	} else {
-		conn.SetPongHandler(nil)
 	}
 }
 
@@ -375,7 +364,7 @@ func (w *webSocket) cleanup(err error) {
 	w.mutex.Lock()
 	// Properly close the connection
 	if e := w.connection.Close(); e != nil {
-		log.Errorf("failed to close connection for %s: %v", w.id, e)
+		w.log.Errorf("failed to close connection for %s: %v", w.id, e)
 	}
 	w.connection = nil
 	close(w.outQueue)
@@ -449,27 +438,32 @@ func (w *webSocket) writePump() {
 	for {
 		select {
 		case <-ticker.T():
+			w.mutex.Lock()
 			// Send periodic ping
 			_ = conn.SetWriteDeadline(time.Now().Add(w.cfg.WriteWait))
 			err := conn.WriteMessage(websocket.PingMessage, []byte{})
+			w.mutex.Unlock()
 			if err != nil {
 				w.onError(w, fmt.Errorf("failed to send ping message for %s: %w", w.id, err))
 				// Invoking cleanup, as socket was forcefully closed
 				closure(err)
 				return
 			}
-			log.Debugf("ping sent for %s", w.id)
+			w.log.Debugf("ping sent for %s", w.id)
 		case ping := <-w.pingC:
 			// Reply with pong message
+			w.mutex.Lock()
 			_ = conn.SetWriteDeadline(time.Now().Add(w.cfg.WriteWait))
 			err := conn.WriteMessage(websocket.PongMessage, ping)
+			w.mutex.Unlock()
+
 			if err != nil {
 				w.onError(w, fmt.Errorf("failed to send pong message %s: %w", w.id, err))
 				// Invoking cleanup, as socket was forcefully closed
 				closure(err)
 				return
 			}
-			log.Debugf("pong sent for %s: %s", w.id, string(ping))
+			w.log.Debugf("pong sent for %s: %s", w.id, string(ping))
 		case msg, ok := <-w.outQueue:
 			// New data needs to be written out (also invoked for pong messages)
 			if !ok {
@@ -479,23 +473,28 @@ func (w *webSocket) writePump() {
 				return
 			}
 			// Send data
+			w.mutex.Lock()
 			_ = conn.SetWriteDeadline(time.Now().Add(w.cfg.WriteWait))
 			err := conn.WriteMessage(msg.typ, msg.data)
+			w.mutex.Unlock()
 			if err != nil {
 				w.onError(w, fmt.Errorf("write failed for %s: %w", w.id, err))
 				// Invoking cleanup, as socket was forcefully closed
 				closure(err)
 				return
 			}
-			log.Debugf("written %d bytes to %s", len(msg.data), w.id)
+			w.log.Debugf("written %d bytes to %s", len(msg.data), w.id)
 		case closeErr := <-w.closeC:
 			// webSocket is being gracefully closed by user command
 			w.log.Debugf("closing connection for %s: %d - %s", w.id, closeErr.Code, closeErr.Text)
+
+			w.mutex.Lock()
 			// Send explicit close message
 			err := conn.WriteControl(
 				websocket.CloseMessage,
 				websocket.FormatCloseMessage(closeErr.Code, closeErr.Text),
 				time.Now().Add(w.cfg.WriteWait))
+			w.mutex.Unlock()
 			if err != nil {
 				// At this point the connection is considered to be forcefully closed,
 				// but we still continue with the intended flow.
@@ -510,7 +509,7 @@ func (w *webSocket) writePump() {
 				closed = fmt.Errorf("websocket read channel closed abruptly")
 			}
 			// webSocket is being forcefully closed, triggered by readPump encountering a failed read.
-			log.Debugf("handling forced close signal for %s, caused by: %v", w.id, closed.Error())
+			w.log.Debugf("handling forced close signal for %s, caused by: %v", w.id, closed.Error())
 			// Connection was forcefully closed, invoke cleanup
 			closure(closed)
 			return
@@ -529,8 +528,4 @@ type HttpConnectionError struct {
 
 func (e HttpConnectionError) Error() string {
 	return fmt.Sprintf("%v, http status: %v", e.Message, e.HttpStatus)
-}
-
-func init() {
-	log = &logging.VoidLogger{}
 }
