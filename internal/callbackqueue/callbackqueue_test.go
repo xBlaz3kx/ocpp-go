@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/stretchr/testify/suite"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
 )
 
 // MockResponse is a simple mock implementation of ocpp.Response for testing

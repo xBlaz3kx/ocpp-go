@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel/metric/noop"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
 
 type ServerDispatcherTestSuite struct {

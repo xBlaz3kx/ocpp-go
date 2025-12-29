@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ws"
 	"github.com/pkg/errors"
+	"github.com/xBlaz3kx/ocpp-go/logging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ws"
 	"go.opentelemetry.io/otel"
 	"gopkg.in/go-playground/validator.v9"
 )

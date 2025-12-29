@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/localauth"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/smartcharging"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/localauth"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/smartcharging"
 )
 
 type ConfigurationManagerTestSuite struct {

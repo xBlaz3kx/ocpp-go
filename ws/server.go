@@ -12,8 +12,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/pkg/errors"
+	"github.com/xBlaz3kx/ocpp-go/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 )

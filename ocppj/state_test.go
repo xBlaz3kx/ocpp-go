@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/lorenzodonini/ocpp-go/ocppj"
+	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
 
 type ClientStateTestSuite struct {

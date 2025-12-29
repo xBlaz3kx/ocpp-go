@@ -24,7 +24,7 @@ More in-depth documentation for v2.0.1 will follow.
 To start a CSMS instance, run the following:
 
 ```go
-import "github.com/lorenzodonini/ocpp-go/ocpp2.0.1"
+import "github.com/xBlaz3kx/ocpp-go/ocpp2.0.1"
 
 csms := ocpp2.NewCSMS(nil, nil)
 

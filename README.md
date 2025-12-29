@@ -1,9 +1,9 @@
 # ocpp-go
 
-[![Build Status](https://github.com/lorenzodonini/ocpp-go/actions/workflows/test.yaml/badge.svg)](https://github.com/lorenzodonini/ocpp-go/actions/workflows/test.yaml)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4)](https://godoc.org/github.com/lorenzodonini/ocpp-go)
-[![Coverage Status](https://coveralls.io/repos/github/lorenzodonini/ocpp-go/badge.svg?branch=master)](https://coveralls.io/github/lorenzodonini/ocpp-go?branch=master)
-[![Go report](https://goreportcard.com/badge/github.com/lorenzodonini/ocpp-go)](https://goreportcard.com/report/github.com/lorenzodonini/ocpp-go)
+[![Build Status](https://github.com/xBlaz3kx/ocpp-go/actions/workflows/test.yaml/badge.svg)](https://github.com/xBlaz3kx/ocpp-go/actions/workflows/test.yaml)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4)](https://godoc.org/github.com/xBlaz3kx/ocpp-go)
+[![Coverage Status](https://coveralls.io/repos/github/xBlaz3kx/ocpp-go/badge.svg?branch=master)](https://coveralls.io/github/xBlaz3kx/ocpp-go?branch=master)
+[![Go report](https://goreportcard.com/badge/github.com/xBlaz3kx/ocpp-go)](https://goreportcard.com/report/github.com/xBlaz3kx/ocpp-go)
 
 Open Charge Point Protocol implementation in Go.
 
@@ -94,8 +94,9 @@ log = logrus.New()
 log.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 log.SetLevel(logrus.DebugLevel) // Debug level needed to see all logs
 // Pass own logger to ws and ocppj packages
-ws.SetLogger(log.WithField("logger", "websocket"))
-ocppj.SetLogger(log.WithField("logger", "ocppj"))
+	server := ws.NewServer(ws.WithServerLogger(log.WithField("logger", "websocket")))
+	// ... use server
+	client := ocppj.NewClient("id", wsClient, nil, nil, log.WithField("logger", "ocppj"))
 ```
 
 The logger you pass needs to conform to the `logging.Logger` interface.

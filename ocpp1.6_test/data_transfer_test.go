@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/stretchr/testify/mock"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
 )
 
 type CustomData struct {

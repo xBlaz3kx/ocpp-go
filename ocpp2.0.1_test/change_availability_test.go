@@ -3,8 +3,8 @@ package ocpp2_test
 import (
 	"fmt"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/availability"
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
+	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/availability"
+	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/types"
 
 	"github.com/stretchr/testify/mock"
 )

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/localauth"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/smartcharging"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
 	"github.com/samber/lo"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/firmware"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/localauth"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/smartcharging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
 )
 
 func NewEmptyConfiguration() Config {

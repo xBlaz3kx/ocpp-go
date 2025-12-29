@@ -5,14 +5,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/logging"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/security"
 	"github.com/sirupsen/logrus"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/logging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/securefirmware"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/security"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/firmware"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/types"
 )
 
 var (

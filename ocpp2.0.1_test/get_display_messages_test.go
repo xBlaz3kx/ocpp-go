@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/display"
+	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/display"
 )
 
 // Test

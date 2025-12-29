@@ -10,9 +10,9 @@ import (
 
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ws"
+	"github.com/xBlaz3kx/ocpp-go/logging"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ws"
 )
 
 // ClientDispatcher contains the state and logic for handling outgoing messages on a client endpoint.

@@ -3,9 +3,9 @@ package ocppj_test
 import (
 	"testing"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/stretchr/testify/suite"
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
+	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
 
 type ValidationTestSuite struct {

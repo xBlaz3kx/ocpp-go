@@ -3,9 +3,9 @@ package ocpp_16_config_manager
 import (
 	"testing"
 
-	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
+	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
 )
 
 var (
