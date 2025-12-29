@@ -10,8 +10,6 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"go.opentelemetry.io/otel/metric/noop"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
-
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/lorenzodonini/ocpp-go/ws"
@@ -373,11 +371,11 @@ func (suite *OcppJTestSuite) SetupTest() {
 	suite.mockClient = &mockClient
 	suite.mockServer = &mockServer
 	suite.clientRequestQueue = ocppj.NewFIFOClientQueue(queueCapacity)
-	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(suite.clientRequestQueue)
-	suite.chargePoint = ocppj.NewClient("mock_id", suite.mockClient, suite.clientDispatcher, nil, mockProfile)
+	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(suite.clientRequestQueue, nil)
+	suite.chargePoint = ocppj.NewClient("mock_id", suite.mockClient, suite.clientDispatcher, nil, nil, mockProfile)
 	suite.serverRequestMap = ocppj.NewFIFOQueueMap(queueCapacity)
-	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap, noop.NewMeterProvider())
-	suite.centralSystem = ocppj.NewServer(suite.mockServer, suite.serverDispatcher, nil, mockProfile)
+	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap, noop.NewMeterProvider(), nil)
+	suite.centralSystem = ocppj.NewServer(suite.mockServer, suite.serverDispatcher, nil, nil, mockProfile)
 	defaultDialect := ocpp.V16 // set default to version 1.6 format error *for test only
 	suite.centralSystem.SetDialect(defaultDialect)
 	suite.chargePoint.SetDialect(defaultDialect)
@@ -818,9 +816,7 @@ func (l *testLogger) Errorf(format string, args ...interface{}) {
 func (suite *OcppJTestSuite) TestLogger() {
 	t := suite.T()
 	logger := testLogger{c: make(chan string, 1)}
-	// Test with custom logger
-	ocppj.SetLogger(&logger)
-	defer ocppj.SetLogger(&logging.VoidLogger{})
+
 	// Expect an error
 	arr, err := ocppj.ParseRawJsonMessage([]byte("[3,\"1234\",{}]"))
 	suite.Require().NoError(err)
@@ -829,7 +825,6 @@ func (suite *OcppJTestSuite) TestLogger() {
 	suite.Assert().Equal("infof", s)
 	// Nil logger must cause a panic
 	assertPanic(t, func() {
-		ocppj.SetLogger(nil)
 	}, func(r interface{}) {
 		suite.Assert().Equal("cannot set a nil logger", r.(string))
 	})

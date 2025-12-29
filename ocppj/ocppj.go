@@ -9,32 +9,15 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/lorenzodonini/ocpp-go/logging"
-
 	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 )
 
-// The internal verbose logger
-var log logging.Logger
-
 var EscapeHTML atomic.Bool
 
 func init() {
-	log = &logging.VoidLogger{}
 	EscapeHTML.Store(true)
-}
-
-// Sets a custom Logger implementation, allowing the ocpp-j package to log events.
-// By default, a VoidLogger is used, so no logs will be sent to any output.
-//
-// The function panics, if a nil logger is passed.
-func SetLogger(logger logging.Logger) {
-	if logger == nil {
-		panic("cannot set a nil logger")
-	}
-	log = logger
 }
 
 // Allows an instance of ocppj to configure if the message is Marshaled by escaping special caracters like "<", ">", "&" etc
@@ -440,7 +423,7 @@ func (endpoint *Endpoint) ParseMessage(arr []interface{}, pendingRequestState Cl
 	} else if typeId == CALL_RESULT {
 		request, ok := pendingRequestState.GetPendingRequest(uniqueId)
 		if !ok {
-			log.Infof("No previous request %v sent. Discarding response message", uniqueId)
+			// No logger available in Endpoint.ParseMessage - this is expected to be called from Server/Client which have loggers
 			return nil, nil
 		}
 		profile, _ := endpoint.GetProfileForFeature(request.GetFeatureName())
@@ -461,7 +444,7 @@ func (endpoint *Endpoint) ParseMessage(arr []interface{}, pendingRequestState Cl
 	} else if typeId == CALL_ERROR {
 		_, ok := pendingRequestState.GetPendingRequest(uniqueId)
 		if !ok {
-			log.Infof("No previous request %v sent. Discarding error message", uniqueId)
+			// No logger available in Endpoint.ParseMessage - this is expected to be called from Server/Client which have loggers
 			return nil, nil
 		}
 		if len(arr) < 4 {

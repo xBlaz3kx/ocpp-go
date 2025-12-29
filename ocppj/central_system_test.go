@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -15,7 +16,7 @@ import (
 )
 
 func (suite *OcppJTestSuite) TestNewServer() {
-	s := ocppj.NewServer(nil, nil, nil)
+	s := ocppj.NewServer(nil, nil, nil, nil)
 	suite.Assert().NotNil(s)
 }
 
@@ -310,6 +311,7 @@ func (suite *OcppJTestSuite) TestCentralSystemHandleFailedResponse() {
 	var callResult *ocppj.CallResult
 	var callError *ocppj.CallError
 	var err error
+
 	// 1. occurrence validation error
 	mockField := "CallResult.Payload.MockValue"
 	mockResponse := newMockConfirmation("")
@@ -320,6 +322,7 @@ func (suite *OcppJTestSuite) TestCentralSystemHandleFailedResponse() {
 	rawResponse := <-msgC
 	expectedErr := fmt.Sprintf(`[4,"%v","%v","Field %s required but not found for feature %s",{}]`, mockUniqueID, ocppj.OccurrenceConstraintErrorType(suite.centralSystem), mockField, mockResponse.GetFeatureName())
 	suite.Assert().Equal(expectedErr, string(rawResponse))
+
 	// 2. property constraint validation error
 	val := "len4"
 	minParamLength := "5"
@@ -332,6 +335,7 @@ func (suite *OcppJTestSuite) TestCentralSystemHandleFailedResponse() {
 	expectedErr = fmt.Sprintf(`[4,"%v","%v","Field %s must be minimum %s, but was %d for feature %s",{}]`,
 		mockUniqueID, ocppj.PropertyConstraintViolation, mockField, minParamLength, len(val), mockResponse.GetFeatureName())
 	suite.Assert().Equal(expectedErr, string(rawResponse))
+
 	// 3. profile not supported
 	mockUnsupportedResponse := &MockUnsupportedResponse{MockValue: "someValue"}
 	callResult, err = suite.centralSystem.CreateCallResult(mockUnsupportedResponse, mockUniqueID)
@@ -342,6 +346,7 @@ func (suite *OcppJTestSuite) TestCentralSystemHandleFailedResponse() {
 	expectedErr = fmt.Sprintf(`[4,"%v","%v","couldn't create Call Result for unsupported action %s",{}]`,
 		mockUniqueID, ocppj.NotSupported, mockUnsupportedResponse.GetFeatureName())
 	suite.Assert().Equal(expectedErr, string(rawResponse))
+
 	// 4. ocpp error validation failed
 	invalidErrorCode := "InvalidErrorCode"
 	callError, err = suite.centralSystem.CreateCallError(mockUniqueID, ocpp.ErrorCode(invalidErrorCode), "", nil)
@@ -352,6 +357,7 @@ func (suite *OcppJTestSuite) TestCentralSystemHandleFailedResponse() {
 	expectedErr = fmt.Sprintf(`[4,"%v","%v","Key: 'CallError.ErrorCode' Error:Field validation for 'ErrorCode' failed on the 'errorCode' tag",{}]`,
 		mockUniqueID, ocppj.GenericError)
 	suite.Assert().Equal(expectedErr, string(rawResponse))
+
 	// 5. marshaling err
 	err = suite.centralSystem.SendError(mockChargePointID, mockUniqueID, ocppj.SecurityError, "", make(chan struct{}))
 	suite.Require().Error(err)
@@ -359,6 +365,7 @@ func (suite *OcppJTestSuite) TestCentralSystemHandleFailedResponse() {
 	rawResponse = <-msgC
 	expectedErr = fmt.Sprintf(`[4,"%v","%v","json: unsupported type: chan struct {}",{}]`, mockUniqueID, ocppj.GenericError)
 	suite.Assert().Equal(expectedErr, string(rawResponse))
+
 	// 6. network error
 	rawErr := fmt.Sprintf("couldn't write to websocket. No socket with id %s is open", mockChargePointID)
 	err = ocpp.NewError(ocppj.GenericError, rawErr, mockUniqueID)
@@ -534,28 +541,33 @@ func (suite *OcppJTestSuite) TestServerEnqueueRequest() {
 }
 
 func (suite *OcppJTestSuite) TestEnqueueMultipleRequests() {
-	messagesToQueue := 5
-	sentMessages := 0
+	var messagesToQueue atomic.Int64
+	var sentMessages atomic.Int64
+	messagesToQueue.Store(5)
+
 	mockChargePointId := "1234"
 	suite.mockServer.On("Start", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Return(nil)
 	suite.mockServer.On("Write", mock.AnythingOfType("string"), mock.Anything).Run(func(args mock.Arguments) {
-		sentMessages += 1
+		sentMessages.Add(1)
 	}).Return(nil)
 	// Start normally
 	suite.centralSystem.Start(8887, "/{ws}")
 	suite.serverDispatcher.CreateClient(mockChargePointId)
-	for i := 0; i < messagesToQueue; i++ {
+
+	for i := 0; i < int(messagesToQueue.Load()); i++ {
 		req := newMockRequest(fmt.Sprintf("request-%v", i))
 		err := suite.centralSystem.SendRequest(mockChargePointId, req)
 		suite.Require().Nil(err)
 	}
 	time.Sleep(500 * time.Millisecond)
+
 	// Only one message was sent, but all elements should still be in queue
-	suite.Assert().Equal(1, sentMessages)
+	suite.Assert().Equal(int64(1), sentMessages.Load())
 	q, ok := suite.serverRequestMap.Get(mockChargePointId)
 	suite.Require().True(ok)
 	suite.Assert().False(q.IsEmpty())
-	suite.Assert().Equal(messagesToQueue, q.Size())
+	suite.Assert().Equal(int(messagesToQueue.Load()), q.Size())
+
 	// Analyze enqueued bundle
 	var i int
 	for !q.IsEmpty() {
@@ -567,7 +579,7 @@ func (suite *OcppJTestSuite) TestEnqueueMultipleRequests() {
 		suite.Assert().Equal(MockFeatureName, bundle.Call.Action)
 		i++
 	}
-	suite.Assert().Equal(messagesToQueue, i)
+	suite.Assert().Equal(int(messagesToQueue.Load()), i)
 }
 
 func (suite *OcppJTestSuite) TestRequestQueueFull() {
