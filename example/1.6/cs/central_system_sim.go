@@ -20,7 +20,6 @@ import (
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/remotetrigger"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/reservation"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/lorenzodonini/ocpp-go/ws"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -49,7 +48,7 @@ var log *logrus.Logger
 var centralSystem ocpp16.CentralSystem
 
 func setupCentralSystem() (ocpp16.CentralSystem, error) {
-	return ocpp16.NewCentralSystem(nil, nil)
+	return ocpp16.NewCentralSystem(nil, nil, log)
 }
 
 func setupTlsCentralSystem() (ocpp16.CentralSystem, error) {
@@ -86,7 +85,7 @@ func setupTlsCentralSystem() (ocpp16.CentralSystem, error) {
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,
 	}))
-	return ocpp16.NewCentralSystem(nil, server)
+	return ocpp16.NewCentralSystem(nil, server, log)
 }
 
 // Run for every connected Charge Point, to simulate some functionality
@@ -252,9 +251,6 @@ func setupMetrics(ctx context.Context, address string) error {
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
-
-	ocppj.SetLogger(log.WithField("logger", "ocppj"))
-	ws.SetLogger(log.WithField("logger", "websocket"))
 
 	// Load config from ENV
 	var listenPort = defaultListenPort

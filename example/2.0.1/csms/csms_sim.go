@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/pyroscope-go"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
@@ -53,7 +51,7 @@ var log *logrus.Logger
 var csms ocpp2.CSMS
 
 func setupCentralSystem() (ocpp2.CSMS, error) {
-	return ocpp2.NewCSMS(nil, nil)
+	return ocpp2.NewCSMS(nil, nil, log)
 }
 
 func setupTlsCentralSystem() (ocpp2.CSMS, error) {
@@ -90,7 +88,7 @@ func setupTlsCentralSystem() (ocpp2.CSMS, error) {
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  certPool,
 	}))
-	return ocpp2.NewCSMS(nil, server)
+	return ocpp2.NewCSMS(nil, server, log)
 }
 
 // Run for every connected Charging Station, to simulate some functionality
@@ -314,9 +312,6 @@ func setupMetrics(ctx context.Context, address string) error {
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
-
-	ocppj.SetLogger(log)
-	ws.SetLogger(log)
 
 	// Load config from ENV
 	var listenPort = defaultListenPort

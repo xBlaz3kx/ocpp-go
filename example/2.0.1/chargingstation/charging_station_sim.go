@@ -17,7 +17,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/lorenzodonini/ocpp-go/ws"
 )
 
@@ -33,7 +32,7 @@ const (
 var log *logrus.Logger
 
 func setupChargingStation(chargingStationID string) ocpp2.ChargingStation {
-	return ocpp2.NewChargingStation(chargingStationID, nil, nil)
+	return ocpp2.NewChargingStation(chargingStationID, nil, nil, log)
 }
 
 func setupTlsChargingStation(chargingStationID string) ocpp2.ChargingStation {
@@ -70,7 +69,7 @@ func setupTlsChargingStation(chargingStationID string) ocpp2.ChargingStation {
 		RootCAs:      certPool,
 		Certificates: clientCertificates,
 	}))
-	return ocpp2.NewChargingStation(chargingStationID, nil, client)
+	return ocpp2.NewChargingStation(chargingStationID, nil, client, log)
 }
 
 // exampleRoutine simulates a charging station flow, where a dummy transaction is started.
@@ -243,7 +242,7 @@ func main() {
 	chargingStation.SetSmartChargingHandler(handler)
 	chargingStation.SetTariffCostHandler(handler)
 	chargingStation.SetTransactionsHandler(handler)
-	ocppj.SetLogger(log)
+
 	// Connects to central system
 	err := chargingStation.Start(csmsUrl)
 	if err != nil {

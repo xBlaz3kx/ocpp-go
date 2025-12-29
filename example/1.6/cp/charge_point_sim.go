@@ -13,7 +13,6 @@ import (
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/localauth"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/logging"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
-	"github.com/lorenzodonini/ocpp-go/ocppj"
 	"github.com/lorenzodonini/ocpp-go/ws"
 	"github.com/sirupsen/logrus"
 )
@@ -30,7 +29,7 @@ const (
 var log *logrus.Logger
 
 func setupChargePoint(chargePointID string) ocpp16.ChargePoint {
-	cp, _ := ocpp16.NewChargePoint(chargePointID, nil, nil)
+	cp, _ := ocpp16.NewChargePoint(chargePointID, nil, nil, log.WithField("logger", "ocppj"))
 	return cp
 }
 
@@ -69,7 +68,7 @@ func setupTlsChargePoint(chargePointID string) ocpp16.ChargePoint {
 		Certificates: clientCertificates,
 	}))
 
-	cp, _ := ocpp16.NewChargePoint(chargePointID, nil, client)
+	cp, _ := ocpp16.NewChargePoint(chargePointID, nil, client, log)
 	return cp
 }
 
@@ -187,8 +186,6 @@ func main() {
 	chargePoint.SetExtendedTriggerMessageHandler(handler)
 	chargePoint.SetSecurityHandler(handler)
 
-	ocppj.SetLogger(log.WithField("logger", "ocppj"))
-	ws.SetLogger(log.WithField("logger", "websocket"))
 	// Connects to central system
 	err := chargePoint.Start(csUrl)
 	if err != nil {

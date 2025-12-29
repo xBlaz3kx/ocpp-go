@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/lorenzodonini/ocpp-go/internal/callbackqueue"
+	log "github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/certificates"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
@@ -159,7 +160,7 @@ type ChargePoint interface {
 //
 // For more advanced options, or if a customer networking/occpj layer is required,
 // please refer to ocppj.Client and ws.Client.
-func NewChargePoint(id string, endpoint *ocppj.Client, client ws.Client) (ChargePoint, error) {
+func NewChargePoint(id string, endpoint *ocppj.Client, client ws.Client, logger log.Logger) (ChargePoint, error) {
 	if client == nil {
 		client = ws.NewClient()
 	}
@@ -167,12 +168,13 @@ func NewChargePoint(id string, endpoint *ocppj.Client, client ws.Client) (Charge
 	client.SetRequestedSubProtocol(types.V16Subprotocol)
 
 	if endpoint == nil {
-		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0))
+		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0), logger)
 		endpoint = ocppj.NewClient(
 			id,
 			client,
 			dispatcher,
 			nil,
+			logger,
 			core.Profile,
 			localauth.Profile,
 			firmware.Profile,
@@ -341,14 +343,14 @@ type CentralSystem interface {
 // If you need a TLS server, you may use the following:
 //
 //	cs := NewServer(nil, ws.NewServer(ws.WithServerTLSConfig("certificatePath", "privateKeyPath", nil)))
-func NewCentralSystem(endpoint *ocppj.Server, server ws.Server) (CentralSystem, error) {
+func NewCentralSystem(endpoint *ocppj.Server, server ws.Server, logger log.Logger) (CentralSystem, error) {
 	if server == nil {
 		server = ws.NewServer()
 	}
 	server.AddSupportedSubprotocol(types.V16Subprotocol)
 
 	if endpoint == nil {
-		endpoint = ocppj.NewServer(server, nil, nil,
+		endpoint = ocppj.NewServer(server, nil, nil, logger,
 			core.Profile,
 			localauth.Profile,
 			firmware.Profile,
