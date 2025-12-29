@@ -28,7 +28,7 @@ func (s *ServerDispatcherTestSuite) SetupTest() {
 	mockProfile := ocpp.NewProfile("mock", &MockFeature{})
 	s.endpoint.AddProfile(mockProfile)
 	s.queueMap = ocppj.NewFIFOQueueMap(10)
-	s.dispatcher = ocppj.NewDefaultServerDispatcher(s.queueMap, noop.NewMeterProvider())
+	s.dispatcher = ocppj.NewDefaultServerDispatcher(s.queueMap, noop.NewMeterProvider(), nil)
 	s.state = ocppj.NewServerState(&s.mutex)
 	s.dispatcher.SetPendingRequestState(s.state)
 	s.websocketServer = MockWebsocketServer{}
@@ -239,7 +239,7 @@ func (c *ClientDispatcherTestSuite) SetupTest() {
 	mockProfile := ocpp.NewProfile("mock", &MockFeature{})
 	c.endpoint.AddProfile(mockProfile)
 	c.queue = ocppj.NewFIFOClientQueue(10)
-	c.dispatcher = ocppj.NewDefaultClientDispatcher(c.queue)
+	c.dispatcher = ocppj.NewDefaultClientDispatcher(c.queue, nil)
 	c.state = ocppj.NewClientState()
 	c.dispatcher.SetPendingRequestState(c.state)
 	c.websocketClient = MockWebsocketClient{}

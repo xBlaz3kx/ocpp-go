@@ -2,6 +2,8 @@ package ocppj
 
 import (
 	"context"
+
+	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -13,13 +15,14 @@ const (
 )
 
 type dispatcherMetrics struct {
-	meter metric.Meter
+	logger logging.Logger
+	meter  metric.Meter
 
 	requestQueue    metric.Int64ObservableGauge
 	pendingRequests metric.Int64ObservableUpDownCounter
 }
 
-func newDispatcherMetrics(meterProvider metric.MeterProvider) (*dispatcherMetrics, error) {
+func newDispatcherMetrics(meterProvider metric.MeterProvider, logger logging.Logger) (*dispatcherMetrics, error) {
 	if meterProvider == nil {
 		return nil, errors.New("meterProvider is nil")
 	}
@@ -77,7 +80,7 @@ func (d *dispatcherMetrics) ObserveInFlightRequests(state *serverState) {
 		},
 		d.pendingRequests)
 	if err != nil {
-		log.Errorf("failed to register callback for inflight queue size: %v", err)
+		d.logger.Errorf("failed to register callback for inflight queue size: %v", err)
 	}
 }
 
@@ -99,6 +102,6 @@ func (d *dispatcherMetrics) ObserveQueues(queue ServerQueueMap) {
 		},
 		d.requestQueue)
 	if err != nil {
-		log.Errorf("failed to register callback for dispatcher queue size: %v", err)
+		d.logger.Errorf("failed to register callback for dispatcher queue size: %v", err)
 	}
 }

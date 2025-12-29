@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/go-playground/validator.v9"
 
+	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ws"
 )
@@ -14,6 +15,7 @@ import (
 // During message exchange, the two roles may be reversed (depending on the message direction), but a client struct remains associated to a charge point/charging station.
 type Client struct {
 	Endpoint
+	logger                logging.Logger
 	client                ws.Client
 	Id                    string
 	requestHandler        func(request ocpp.Request, requestId string, action string)
@@ -28,31 +30,41 @@ type Client struct {
 
 // Creates a new Client endpoint.
 // Requires a unique client ID, a websocket client, a struct for queueing/dispatching requests,
-// a state handler and a list of supported profiles (optional).
+// a state handler, a logger, and a list of supported profiles (optional).
 //
-// You may create a simple new server by using these default values:
+// You may create a simple new client by using these default values:
 //
-//	s := ocppj.NewClient(ws.NewClient(), nil, nil)
+//	c := ocppj.NewClient("client_id", ws.NewClient(), nil, nil, nil)
 //
 // The wsClient parameter cannot be nil. Refer to the ws package for information on how to create and
-// customize a websocket client.
-func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, stateHandler ClientState, profiles ...*ocpp.Profile) *Client {
+// customize a websocket client. If logger is nil, a VoidLogger will be used.
+func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, stateHandler ClientState, logger logging.Logger, profiles ...*ocpp.Profile) *Client {
 	endpoint := Endpoint{}
 	if wsClient == nil {
 		panic("wsClient parameter cannot be nil")
+	}
+	if logger == nil {
+		logger = &logging.VoidLogger{}
 	}
 	for _, profile := range profiles {
 		endpoint.AddProfile(profile)
 	}
 	if dispatcher == nil {
-		dispatcher = NewDefaultClientDispatcher(NewFIFOClientQueue(10))
+		dispatcher = NewDefaultClientDispatcher(NewFIFOClientQueue(10), logger)
 	}
 	if stateHandler == nil {
 		stateHandler = NewClientState()
 	}
 	dispatcher.SetNetworkClient(wsClient)
 	dispatcher.SetPendingRequestState(stateHandler)
-	return &Client{Endpoint: endpoint, client: wsClient, Id: id, dispatcher: dispatcher, RequestState: stateHandler}
+	return &Client{
+		Endpoint:     endpoint,
+		logger:       logger,
+		client:       wsClient,
+		Id:           id,
+		dispatcher:   dispatcher,
+		RequestState: stateHandler,
+	}
 }
 
 // Return incoming requests handler.
@@ -201,10 +213,10 @@ func (c *Client) SendRequest(request ocpp.Request) error {
 	}
 	// Message will be processed by dispatcher. A dedicated mechanism allows to delegate the message queue handling.
 	if err = c.dispatcher.SendRequest(RequestBundle{Call: call, Data: jsonMessage}); err != nil {
-		log.Errorf("error dispatching request [%s, %s]: %v", call.UniqueId, call.Action, err)
+		c.logger.Errorf("error dispatching request [%s, %s]: %v", call.UniqueId, call.Action, err)
 		return err
 	}
-	log.Debugf("enqueued CALL [%s, %s]", call.UniqueId, call.Action)
+	c.logger.Debugf("enqueued CALL [%s, %s]", call.UniqueId, call.Action)
 	return nil
 }
 
@@ -228,11 +240,11 @@ func (c *Client) SendResponse(requestId string, response ocpp.Response) error {
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
 	if err = c.client.Write(jsonMessage); err != nil {
-		log.Errorf("error sending response [%s]: %v", callResult.GetUniqueId(), err)
+		c.logger.Errorf("error sending response [%s]: %v", callResult.GetUniqueId(), err)
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
-	log.Debugf("sent CALL RESULT [%s]", callResult.GetUniqueId())
-	log.Debugf("sent JSON message to server: %s", string(jsonMessage))
+	c.logger.Debugf("sent CALL RESULT [%s]", callResult.GetUniqueId())
+	c.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
 	return nil
 }
 
@@ -254,21 +266,21 @@ func (c *Client) SendError(requestId string, errorCode ocpp.ErrorCode, descripti
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
 	if err = c.client.Write(jsonMessage); err != nil {
-		log.Errorf("error sending response error [%s]: %v", callError.UniqueId, err)
+		c.logger.Errorf("error sending response error [%s]: %v", callError.UniqueId, err)
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
-	log.Debugf("sent CALL ERROR [%s]", callError.UniqueId)
-	log.Debugf("sent JSON message to server: %s", string(jsonMessage))
+	c.logger.Debugf("sent CALL ERROR [%s]", callError.UniqueId)
+	c.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
 	return nil
 }
 
 func (c *Client) ocppMessageHandler(data []byte) error {
 	parsedJson, err := ParseRawJsonMessage(data)
 	if err != nil {
-		log.Error(err)
+		c.logger.Error(err)
 		return err
 	}
-	log.Debugf("received JSON message from server: %s", string(data))
+	c.logger.Debugf("received JSON message from server: %s", string(data))
 	message, err := c.ParseMessage(parsedJson, c.RequestState)
 	if err != nil {
 		ocppErr := err.(*ocpp.Error)
@@ -290,25 +302,25 @@ func (c *Client) ocppMessageHandler(data []byte) error {
 				return err2
 			}
 		}
-		log.Error(err)
+		c.logger.Error(err)
 		return err
 	}
 	if message != nil {
 		switch message.GetMessageTypeId() {
 		case CALL:
 			call := message.(*Call)
-			log.Debugf("handling incoming CALL [%s, %s]", call.UniqueId, call.Action)
+			c.logger.Debugf("handling incoming CALL [%s, %s]", call.UniqueId, call.Action)
 			c.requestHandler(call.Payload, call.UniqueId, call.Action)
 		case CALL_RESULT:
 			callResult := message.(*CallResult)
-			log.Debugf("handling incoming CALL RESULT [%s]", callResult.UniqueId)
+			c.logger.Debugf("handling incoming CALL RESULT [%s]", callResult.UniqueId)
 			c.dispatcher.CompleteRequest(callResult.GetUniqueId()) // Remove current request from queue and send next one
 			if c.responseHandler != nil {
 				c.responseHandler(callResult.Payload, callResult.UniqueId)
 			}
 		case CALL_ERROR:
 			callError := message.(*CallError)
-			log.Debugf("handling incoming CALL ERROR [%s]", callError.UniqueId)
+			c.logger.Debugf("handling incoming CALL ERROR [%s]", callError.UniqueId)
 			c.dispatcher.CompleteRequest(callError.GetUniqueId()) // Remove current request from queue and send next one
 			if c.errorHandler != nil {
 				c.errorHandler(ocpp.NewError(callError.ErrorCode, callError.ErrorDescription, callError.UniqueId), callError.ErrorDetails)
@@ -326,7 +338,7 @@ func (c *Client) ocppMessageHandler(data []byte) error {
 // The method will, however, only attempt to send a default error once.
 // If this operation fails, the other endpoint may still starve.
 func (c *Client) HandleFailedResponseError(requestID string, err error, featureName string) {
-	log.Debugf("handling error for failed response [%s]", requestID)
+	c.logger.Debugf("handling error for failed response [%s]", requestID)
 	var responseErr *ocpp.Error
 	// There's several possible errors: invalid profile, invalid payload or send error
 	switch err.(type) {
@@ -347,7 +359,7 @@ func (c *Client) HandleFailedResponseError(requestID string, err error, featureN
 }
 
 func (c *Client) onDisconnected(err error) {
-	log.Error("disconnected from server", err)
+	c.logger.Error("disconnected from server", err)
 	c.dispatcher.Pause()
 	if c.onDisconnectedHandler != nil {
 		c.onDisconnectedHandler(err)

@@ -2,11 +2,15 @@ package ocppj
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel/metric"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"go.opentelemetry.io/otel/metric"
+
+	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ws"
 )
@@ -87,6 +91,7 @@ type pendingRequest struct {
 // The dispatcher implements the ClientState as well for simplicity.
 // Access to pending requests is thread-safe.
 type DefaultClientDispatcher struct {
+	logger              logging.Logger
 	requestQueue        RequestQueue
 	requestChannel      chan bool
 	readyForDispatch    chan bool
@@ -95,7 +100,7 @@ type DefaultClientDispatcher struct {
 	mutex               sync.RWMutex
 	onRequestCancel     func(requestID string, request ocpp.Request, err *ocpp.Error)
 	timer               *time.Timer
-	paused              bool
+	paused              atomic.Bool
 	timeout             time.Duration
 }
 
@@ -105,8 +110,13 @@ const (
 )
 
 // NewDefaultClientDispatcher creates a new DefaultClientDispatcher struct.
-func NewDefaultClientDispatcher(queue RequestQueue) *DefaultClientDispatcher {
+// If logger is nil, a VoidLogger will be used.
+func NewDefaultClientDispatcher(queue RequestQueue, logger logging.Logger) *DefaultClientDispatcher {
+	if logger == nil {
+		logger = &logging.VoidLogger{}
+	}
 	return &DefaultClientDispatcher{
+		logger:              logger,
 		requestQueue:        queue,
 		requestChannel:      nil,
 		readyForDispatch:    make(chan bool, 1),
@@ -125,9 +135,10 @@ func (d *DefaultClientDispatcher) SetTimeout(timeout time.Duration) {
 
 func (d *DefaultClientDispatcher) Start() {
 	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	d.requestChannel = make(chan bool, 1)
 	d.timer = time.NewTimer(defaultTimeoutTick) // Default to 24 hours tick
+	d.mutex.Unlock()
+
 	go d.messagePump()
 }
 
@@ -138,14 +149,13 @@ func (d *DefaultClientDispatcher) IsRunning() bool {
 }
 
 func (d *DefaultClientDispatcher) IsPaused() bool {
-	d.mutex.RLock()
-	defer d.mutex.RUnlock()
-	return d.paused
+	return d.paused.Load()
 }
 
 func (d *DefaultClientDispatcher) Stop() {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
+
 	close(d.requestChannel)
 	// TODO: clear pending requests?
 }
@@ -166,23 +176,20 @@ func (d *DefaultClientDispatcher) SendRequest(req RequestBundle) error {
 		return err
 	}
 	d.mutex.RLock()
-	d.requestChannel <- true
+	if d.requestChannel != nil {
+		d.requestChannel <- true
+	}
 	d.mutex.RUnlock()
+
 	return nil
 }
 
 func (d *DefaultClientDispatcher) messagePump() {
 	rdy := true // Ready to transmit at the beginning
 
-	reqChan := func() chan bool {
-		d.mutex.RLock()
-		defer d.mutex.RUnlock()
-		return d.requestChannel
-	}
-
 	for {
 		select {
-		case _, ok := <-reqChan():
+		case _, ok := <-d.requestChannel:
 			// New request was posted
 			if !ok {
 				d.requestQueue.Init()
@@ -247,8 +254,8 @@ func (d *DefaultClientDispatcher) dispatchNextRequest() {
 				ocpp.NewError(InternalError, err.Error(), bundle.Call.UniqueId))
 		}
 	}
-	log.Infof("dispatched request %s to server", bundle.Call.UniqueId)
-	log.Debugf("sent JSON message to server: %s", string(jsonMessage))
+	d.logger.Infof("dispatched request %s to server", bundle.Call.UniqueId)
+	d.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
 }
 
 func (d *DefaultClientDispatcher) Pause() {
@@ -257,14 +264,13 @@ func (d *DefaultClientDispatcher) Pause() {
 	if !d.timer.Stop() {
 		<-d.timer.C
 	}
+
 	d.timer.Reset(defaultTimeoutTick)
-	d.paused = true
+	d.paused.Store(true)
 }
 
 func (d *DefaultClientDispatcher) Resume() {
-	d.mutex.Lock()
-	d.paused = false
-	d.mutex.Unlock()
+	d.paused.Store(false)
 	if d.pendingRequestState.HasPendingRequest() {
 		// There is a pending request already. Awaiting response, before dispatching new requests.
 		d.timer.Reset(d.timeout)
@@ -277,17 +283,17 @@ func (d *DefaultClientDispatcher) Resume() {
 func (d *DefaultClientDispatcher) CompleteRequest(requestId string) {
 	el := d.requestQueue.Peek()
 	if el == nil {
-		log.Errorf("attempting to pop front of queue, but queue is empty")
+		d.logger.Errorf("attempting to pop front of queue, but queue is empty")
 		return
 	}
 	bundle, _ := el.(RequestBundle)
 	if bundle.Call.UniqueId != requestId {
-		log.Errorf("internal state mismatch: received response for %v but expected response for %v", requestId, bundle.Call.UniqueId)
+		d.logger.Errorf("internal state mismatch: received response for %v but expected response for %v", requestId, bundle.Call.UniqueId)
 		return
 	}
 	d.requestQueue.Pop()
 	d.pendingRequestState.DeletePendingRequest(requestId)
-	log.Debugf("removed request %v from front of queue", bundle.Call.UniqueId)
+	d.logger.Debugf("removed request %v from front of queue", bundle.Call.UniqueId)
 	// Signal that next message in queue may be sent
 	d.readyForDispatch <- true
 }
@@ -363,13 +369,14 @@ type ServerDispatcher interface {
 // The dispatcher implements the ClientState as well for simplicity.
 // Access to pending requests is thread-safe.
 type DefaultServerDispatcher struct {
+	logger              logging.Logger
 	queueMap            ServerQueueMap
 	requestChannel      chan string
 	readyForDispatch    chan string
 	pendingRequestState ServerState
 	timeout             time.Duration
 	timerC              chan string
-	running             bool
+	running             atomic.Bool
 	stoppedC            chan struct{}
 	onRequestCancel     CanceledRequestHandler
 	network             ws.Server
@@ -391,17 +398,25 @@ func (c clientTimeoutContext) isActive() bool {
 }
 
 // NewDefaultServerDispatcher creates a new DefaultServerDispatcher struct.
-func NewDefaultServerDispatcher(queueMap ServerQueueMap, provider metric.MeterProvider) *DefaultServerDispatcher {
-	dispatcherMetrics, err := newDispatcherMetrics(provider)
+// If logger is nil, a VoidLogger will be used.
+func NewDefaultServerDispatcher(queueMap ServerQueueMap, provider metric.MeterProvider, logger logging.Logger) *DefaultServerDispatcher {
+	if logger == nil {
+		logger = &logging.VoidLogger{}
+	}
+
+	dispatcherMetrics, err := newDispatcherMetrics(provider, logger)
 	if err != nil {
-		log.Errorf("failed to create dispatcher metrics: %v", err)
+		logger.Errorf("failed to create dispatcher metrics: %v", err)
 		return nil
 	}
 
 	d := &DefaultServerDispatcher{
+		logger:           logger,
 		queueMap:         queueMap,
-		requestChannel:   nil,
+		requestChannel:   make(chan string, 20),
 		readyForDispatch: make(chan string, 1),
+		timerC:           make(chan string, 10),
+		stoppedC:         make(chan struct{}, 1),
 		timeout:          defaultMessageTimeout,
 		metrics:          dispatcherMetrics,
 	}
@@ -414,26 +429,29 @@ func NewDefaultServerDispatcher(queueMap ServerQueueMap, provider metric.MeterPr
 }
 
 func (d *DefaultServerDispatcher) Start() {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-	d.requestChannel = make(chan string, 20)
+	d.running.Store(true)
+
+	d.queueMap.Init()
+	d.requestChannel = make(chan string, 30)
+	d.readyForDispatch = make(chan string, 1)
 	d.timerC = make(chan string, 10)
 	d.stoppedC = make(chan struct{}, 1)
-	d.running = true
+
 	go d.messagePump()
 }
 
 func (d *DefaultServerDispatcher) IsRunning() bool {
-	d.mutex.RLock()
-	defer d.mutex.RUnlock()
-	return d.running
+	return d.running.Load()
 }
 
 func (d *DefaultServerDispatcher) Stop() {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-	d.running = false
+	d.running.Store(false)
+
+	// Close all channels
 	close(d.stoppedC)
+	close(d.readyForDispatch)
+	close(d.timerC)
+	close(d.requestChannel)
 }
 
 func (d *DefaultServerDispatcher) SetTimeout(timeout time.Duration) {
@@ -449,9 +467,7 @@ func (d *DefaultServerDispatcher) CreateClient(clientID string) {
 func (d *DefaultServerDispatcher) DeleteClient(clientID string) {
 	d.queueMap.Remove(clientID)
 	if d.IsRunning() {
-		d.mutex.RLock()
 		d.requestChannel <- clientID
-		d.mutex.RUnlock()
 	}
 }
 
@@ -478,9 +494,9 @@ func (d *DefaultServerDispatcher) SendRequest(clientID string, req RequestBundle
 	if err := q.Push(req); err != nil {
 		return err
 	}
-	d.mutex.RLock()
+
 	d.requestChannel <- clientID
-	d.mutex.RUnlock()
+
 	return nil
 }
 
@@ -494,21 +510,19 @@ func (d *DefaultServerDispatcher) messagePump() {
 	var clientQueue RequestQueue
 	clientContextMap := map[string]clientTimeoutContext{} // Empty at the beginning
 
-	reqChan := func() chan string {
-		d.mutex.RLock()
-		defer d.mutex.RUnlock()
-		return d.requestChannel
-	}
-
 	// Dispatcher Loop
 	for {
 		select {
 		case <-d.stoppedC:
 			// server was stopped
 			d.queueMap.Init()
-			log.Info("stopped processing requests")
+			d.logger.Info("stopped processing requests")
 			return
-		case clientID = <-reqChan():
+		case clientID, ok = <-d.requestChannel:
+			// Request channel closed, stopping dispatcher
+			if !ok {
+				continue
+			}
 			// Check whether there is a request queue for the specified client
 			clientQueue, ok = d.queueMap.Get(clientID)
 			if !ok {
@@ -521,44 +535,42 @@ func (d *DefaultServerDispatcher) messagePump() {
 				}
 				continue
 			}
+
 			// Check whether we can transmit to client
 			clientCtx, ok = clientContextMap[clientID]
-			if !ok {
-				// First request for this client, ready to transmit
-				rdy = true
-			} else {
-				// If there is no active context, the client is ready to transmit
-				rdy = !clientCtx.isActive()
-			}
+			// Ready to transmit if its the first request or previous request timed out
+			rdy = !ok || !clientCtx.isActive()
+
 		case clientID, ok = <-d.timerC:
 			// Timeout elapsed
 			if !ok {
 				continue
 			}
 			// Canceling timeout context
-			log.Debugf("timeout for client %v, canceling message", clientID)
+			d.logger.Debugf("timeout for client %v, canceling message", clientID)
 			clientCtx = clientContextMap[clientID]
 			if clientCtx.isActive() {
 				clientCtx.cancel()
 				clientContextMap[clientID] = clientTimeoutContext{}
 			}
+
 			if d.pendingRequestState.HasPendingRequest(clientID) {
 				// Current request for client timed out. Removing request and triggering cancel callback
 				q, found := d.queueMap.Get(clientID)
 				if !found {
 					// Possible race condition: queue was already removed
-					log.Errorf("dispatcher timeout for client %s triggered, but no request queue found", clientID)
+					d.logger.Errorf("dispatcher timeout for client %s triggered, but no request queue found", clientID)
 					continue
 				}
 				el := q.Peek()
 				if el == nil {
 					// Should never happen
-					log.Error("dispatcher timeout for client %s triggered, but no pending request found", clientID)
+					d.logger.Error("dispatcher timeout for client %s triggered, but no pending request found", clientID)
 					continue
 				}
 				bundle, _ := el.(RequestBundle)
 				d.CompleteRequest(clientID, bundle.Call.UniqueId)
-				log.Infof("request %v for %v timed out", bundle.Call.UniqueId, clientID)
+				d.logger.Infof("request %v for %v timed out", bundle.Call.UniqueId, clientID)
 				if d.onRequestCancel != nil {
 					d.onRequestCancel(clientID, bundle.Call.UniqueId, bundle.Call.Payload,
 						ocpp.NewError(GenericError, "Request timed out", bundle.Call.UniqueId))
@@ -577,7 +589,7 @@ func (d *DefaultServerDispatcher) messagePump() {
 				// Ready to transmit
 				rdy = true
 			}
-			log.Debugf("%v ready to transmit again", clientID)
+			d.logger.Debugf("%v ready to transmit again", clientID)
 		}
 
 		// Only dispatch request if able to send and request queue isn't empty
@@ -598,7 +610,7 @@ func (d *DefaultServerDispatcher) dispatchNextRequest(clientID string) (clientCt
 	// Get first element in queue
 	q, ok := d.queueMap.Get(clientID)
 	if !ok {
-		log.Errorf("failed to dispatch next request for %s, no request queue available", clientID)
+		d.logger.Errorf("failed to dispatch next request for %s, no request queue available", clientID)
 		return
 	}
 	el := q.Peek()
@@ -608,7 +620,7 @@ func (d *DefaultServerDispatcher) dispatchNextRequest(clientID string) (clientCt
 	d.pendingRequestState.AddPendingRequest(clientID, callID, bundle.Call.Payload)
 	err := d.network.Write(clientID, jsonMessage)
 	if err != nil {
-		log.Errorf("error while sending message: %v", err)
+		d.logger.Errorf("error while sending message: %v", err)
 		// TODO: handle retransmission instead of removing pending request
 		d.CompleteRequest(clientID, callID)
 		if d.onRequestCancel != nil {
@@ -622,26 +634,29 @@ func (d *DefaultServerDispatcher) dispatchNextRequest(clientID string) (clientCt
 		ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
 		clientCtx = clientTimeoutContext{ctx: ctx, cancel: cancel}
 	}
-	log.Infof("dispatched request %s for %s", callID, clientID)
-	log.Debugf("sent JSON message to %s: %s", clientID, string(jsonMessage))
+	d.logger.Infof("dispatched request %s for %s", callID, clientID)
+	d.logger.Debugf("sent JSON message to %s: %s", clientID, string(jsonMessage))
 	return
 }
 
 func (d *DefaultServerDispatcher) waitForTimeout(clientID string, clientCtx clientTimeoutContext) {
 	defer clientCtx.cancel()
-	log.Debugf("started timeout timer for %s", clientID)
+	d.logger.Debugf("started timeout timer for %s", clientID)
 	select {
 	case <-clientCtx.ctx.Done():
 		err := clientCtx.ctx.Err()
-		if err == context.DeadlineExceeded {
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
 			// Timeout triggered, notifying messagePump
 			d.mutex.RLock()
-			defer d.mutex.RUnlock()
-			if d.running {
-				d.timerC <- clientID
+			running := d.running.Load()
+			timerC := d.timerC
+			d.mutex.RUnlock()
+			if running && timerC != nil {
+				timerC <- clientID
 			}
-		} else {
-			log.Debugf("timeout canceled for %s", clientID)
+		default:
+			d.logger.Debugf("timeout canceled for %s", clientID)
 		}
 	case <-d.stoppedC:
 		// server was stopped, every pending timeout gets canceled
@@ -651,23 +666,23 @@ func (d *DefaultServerDispatcher) waitForTimeout(clientID string, clientCtx clie
 func (d *DefaultServerDispatcher) CompleteRequest(clientID string, requestID string) {
 	q, ok := d.queueMap.Get(clientID)
 	if !ok {
-		log.Errorf("attempting to complete request for client %v, but no matching queue found", clientID)
+		d.logger.Errorf("attempting to complete request for client %v, but no matching queue found", clientID)
 		return
 	}
 	el := q.Peek()
 	if el == nil {
-		log.Errorf("attempting to pop front of queue, but queue is empty")
+		d.logger.Errorf("attempting to pop front of queue, but queue is empty")
 		return
 	}
 	bundle, _ := el.(RequestBundle)
 	callID := bundle.Call.GetUniqueId()
 	if callID != requestID {
-		log.Errorf("internal state mismatch: processing response for %v but expected response for %v", requestID, callID)
+		d.logger.Errorf("internal state mismatch: processing response for %v but expected response for %v", requestID, callID)
 		return
 	}
 	q.Pop()
 	d.pendingRequestState.DeletePendingRequest(clientID, requestID)
-	log.Debugf("completed request %s for %s", callID, clientID)
+	d.logger.Debugf("completed request %s for %s", callID, clientID)
 	// Signal that next message in queue may be sent
 	d.readyForDispatch <- clientID
 }

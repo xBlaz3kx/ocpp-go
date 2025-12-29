@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/lorenzodonini/ocpp-go/internal/callbackqueue"
+	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/authorization"
 	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/availability"
@@ -208,15 +209,15 @@ type ChargingStation interface {
 //
 // For more advanced options, or if a custom networking/occpj layer is required,
 // please refer to ocppj.Client and ws.Client.
-func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client) ChargingStation {
+func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, logger logging.Logger) ChargingStation {
 	if client == nil {
 		client = ws.NewClient()
 	}
 	client.SetRequestedSubProtocol(types.V201Subprotocol)
 
 	if endpoint == nil {
-		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0))
-		endpoint = ocppj.NewClient(id, client, dispatcher, nil, authorization.Profile, availability.Profile, data.Profile, diagnostics.Profile, display.Profile, firmware.Profile, iso15118.Profile, localauth.Profile, meter.Profile, provisioning.Profile, remotecontrol.Profile, reservation.Profile, security.Profile, smartcharging.Profile, tariffcost.Profile, transactions.Profile)
+		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0), logger)
+		endpoint = ocppj.NewClient(id, client, dispatcher, nil, logger, authorization.Profile, availability.Profile, data.Profile, diagnostics.Profile, display.Profile, firmware.Profile, iso15118.Profile, localauth.Profile, meter.Profile, provisioning.Profile, remotecontrol.Profile, reservation.Profile, security.Profile, smartcharging.Profile, tariffcost.Profile, transactions.Profile)
 	}
 	endpoint.SetDialect(ocpp.V2)
 
@@ -415,7 +416,7 @@ type CSMS interface {
 // If you need a TLS server, you may use the following:
 //
 //	csms := NewCSMS(nil, ws.NewServer(ws.WithServerTLSConfig("certificatePath", "privateKeyPath", nil)))
-func NewCSMS(endpoint *ocppj.Server, server ws.Server) (CSMS, error) {
+func NewCSMS(endpoint *ocppj.Server, server ws.Server, logger logging.Logger) (CSMS, error) {
 	if server == nil {
 		server = ws.NewServer()
 	}
@@ -423,7 +424,7 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server) (CSMS, error) {
 	server.AddSupportedSubprotocol(types.V201Subprotocol)
 
 	if endpoint == nil {
-		endpoint = ocppj.NewServer(server, nil, nil,
+		endpoint = ocppj.NewServer(server, nil, nil, logger,
 			authorization.Profile,
 			availability.Profile,
 			data.Profile,

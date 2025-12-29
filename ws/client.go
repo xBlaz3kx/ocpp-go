@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/lorenzodonini/ocpp-go/logging"
 )
 
 // ---------------------- CLIENT ----------------------
@@ -27,7 +28,7 @@ import (
 //
 //	certPool, err := x509.SystemCertPool()
 //	if err != nil {
-//		log.Fatal(err)
+//		c.logger.Fatal(err)
 //	}
 //	// You may add more trusted certificates to the pool before creating the TLS Config
 //	client := NewClient(&tls.Config{
@@ -124,6 +125,7 @@ type Client interface {
 //
 // Use the NewClient function to create a new client.
 type client struct {
+	logger         logging.Logger
 	webSocket      *webSocket
 	url            url.URL
 	messageHandler func(data []byte) error
@@ -159,6 +161,17 @@ func WithClientCompression(enable bool) ClientOpt {
 	}
 }
 
+// WithClientLogger sets the logger for the client.
+// If not set, a VoidLogger will be used.
+func WithClientLogger(logger logging.Logger) ClientOpt {
+	return func(c *client) {
+		if logger == nil {
+			logger = &logging.VoidLogger{}
+		}
+		c.logger = logger
+	}
+}
+
 // NewClient creates a new websocket client.
 //
 // If the optional tlsConfig is not nil, and the server supports secure communication,
@@ -187,6 +200,7 @@ func WithClientCompression(enable bool) ClientOpt {
 //	InsecureSkipVerify: true
 func NewClient(opts ...ClientOpt) Client {
 	c := &client{
+		logger:        &logging.VoidLogger{},
 		dialOptions:   []func(*websocket.Dialer){},
 		timeoutConfig: NewClientTimeoutConfig(),
 		reconnectC:    make(chan struct{}, 1),
@@ -253,7 +267,7 @@ func (c *client) getReadTimeout() time.Time {
 }
 
 func (c *client) handleReconnection() {
-	log.Info("started automatic reconnection handler")
+	c.logger.Info("started automatic reconnection handler")
 	delay := c.timeoutConfig.RetryBackOffWaitMinimum + time.Duration(rand.Intn(c.timeoutConfig.RetryBackOffRandomRange+1))*time.Second
 	reconnectionAttempts := 1
 	for {
@@ -261,15 +275,15 @@ func (c *client) handleReconnection() {
 		select {
 		case <-time.After(delay):
 		case <-c.reconnectC:
-			log.Info("automatic reconnection aborted")
+			c.logger.Info("automatic reconnection aborted")
 			return
 		}
 
-		log.Info("reconnecting... attempt", reconnectionAttempts)
+		c.logger.Info("reconnecting... attempt", reconnectionAttempts)
 		err := c.Start(c.url.String())
 		if err == nil {
 			// Re-connection was successful
-			log.Info("reconnected successfully to server")
+			c.logger.Info("reconnected successfully to server")
 			if c.onReconnected != nil {
 				c.onReconnected()
 			}
@@ -297,14 +311,14 @@ func (c *client) Write(data []byte) error {
 	if !c.IsConnected() {
 		return fmt.Errorf("client is currently not connected, cannot send data")
 	}
-	log.Debugf("queuing data for server")
+	c.logger.Debugf("queuing data for server")
 	return c.webSocket.Write(data)
 }
 
 func (c *client) StartWithRetries(urlStr string) {
 	err := c.Start(urlStr)
 	if err != nil {
-		log.Info("Connection error:", err)
+		c.logger.Info("Connection error:", err)
 		c.handleReconnection()
 	}
 }
@@ -329,7 +343,7 @@ func (c *client) Start(urlStr string) error {
 		option(&dialer)
 	}
 	// Connect
-	log.Info("connecting to server")
+	c.logger.Info("connecting to server")
 	ws, resp, err := dialer.Dial(urlStr, c.header)
 	if err != nil {
 		if resp != nil {
@@ -358,6 +372,7 @@ func (c *client) Start(urlStr string) error {
 			0,
 			c.timeoutConfig.PingPeriod,
 			c.timeoutConfig.PongWait,
+			c.logger,
 		),
 		c.handleMessage,
 		c.handleDisconnect,
@@ -369,14 +384,14 @@ func (c *client) Start(urlStr string) error {
 		return fmt.Errorf("failed to create websocket channel: %w", err)
 	}
 
-	log.Infof("connected to server as %s", id)
+	c.logger.Infof("connected to server as %s", id)
 	// Start reader and write routine
 	c.webSocket.run()
 	return nil
 }
 
 func (c *client) Stop() {
-	log.Infof("closing connection to server")
+	c.logger.Infof("closing connection to server")
 	if c.IsConnected() {
 		// Attempt to gracefully shut down the connection
 		err := c.webSocket.Close(websocket.CloseError{Code: websocket.CloseNormalClosure, Text: ""})
@@ -434,7 +449,7 @@ func (c *client) handleDisconnect(_ Channel, err error) {
 }
 
 func (c *client) error(err error) {
-	log.Error(err)
+	c.logger.Error(err)
 	if c.errC != nil {
 		c.errC <- err
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/lorenzodonini/ocpp-go/logging"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
@@ -132,6 +133,7 @@ type Server interface {
 //
 // Use the NewServer function to create a new server.
 type server struct {
+	logger                logging.Logger
 	connections           map[string]*webSocket
 	httpServer            *http.Server
 	messageHandler        func(ws Channel, data []byte) error
@@ -150,7 +152,7 @@ type server struct {
 	connMutex         sync.RWMutex
 	addr              *net.TCPAddr
 	httpHandler       *mux.Router
-	metrics               *serverMetrics
+	metrics           *serverMetrics
 }
 
 // ServerOpt is a function that can be used to set options on a server during creation.
@@ -189,6 +191,17 @@ func WithServerMeterProvider(meterProvider metric.MeterProvider) ServerOpt {
 	}
 }
 
+// WithServerLogger sets the logger for the server.
+// If not set, a VoidLogger will be used.
+func WithServerLogger(logger logging.Logger) ServerOpt {
+	return func(s *server) {
+		if logger == nil {
+			logger = &logging.VoidLogger{}
+		}
+		s.logger = logger
+	}
+}
+
 // NewServer Creates a new websocket server.
 //
 // Additional options may be added using the AddOption function.
@@ -210,13 +223,10 @@ func NewServer(opts ...ServerOpt) Server {
 	// Note: If metrics are not configured, a noop meter provider is used and no metrics are exported.
 	meterProvider := otel.GetMeterProvider()
 	serverMetrics, err := newServerMetrics(meterProvider)
-	if err != nil {
-		// todo improve error handling
-		log.Error(errors.Wrap(err, "Error creating websocket server metrics"))
-	}
 
 	router := mux.NewRouter()
 	s := &server{
+		logger:        &logging.VoidLogger{},
 		httpServer:    &http.Server{},
 		timeoutConfig: NewServerTimeoutConfig(),
 		upgrader:      websocket.Upgrader{Subprotocols: []string{}},
@@ -229,6 +239,11 @@ func NewServer(opts ...ServerOpt) Server {
 	}
 	for _, o := range opts {
 		o(s)
+	}
+
+	if err != nil {
+		// todo improve error handling
+		s.logger.Error(errors.Wrap(err, "Error creating websocket server metrics"))
 	}
 
 	s.upgrader.EnableCompression = s.enableCompression
@@ -278,7 +293,7 @@ func (s *server) SetCheckOriginHandler(handler func(r *http.Request) bool) {
 }
 
 func (s *server) error(err error) {
-	log.Error(err)
+	s.logger.Error(err)
 	if s.errC != nil {
 		s.errC <- err
 	}
@@ -325,7 +340,7 @@ func (s *server) Start(port int, listenPath string) {
 
 	s.addr = ln.Addr().(*net.TCPAddr)
 
-	log.Infof("listening on tcp network %v", addr)
+	s.logger.Infof("listening on tcp network %v", addr)
 	s.httpServer.RegisterOnShutdown(s.stopConnections)
 	if s.tlsCertificatePath != "" && s.tlsCertificateKey != "" {
 		err = s.httpServer.ServeTLS(ln, s.tlsCertificatePath, s.tlsCertificateKey)
@@ -339,7 +354,7 @@ func (s *server) Start(port int, listenPath string) {
 }
 
 func (s *server) Stop() {
-	log.Info("stopping websocket server")
+	s.logger.Info("stopping websocket server")
 	err := s.httpServer.Shutdown(context.Background())
 	if err != nil {
 		s.error(fmt.Errorf("shutdown failed: %w", err))
@@ -359,7 +374,7 @@ func (s *server) StopConnection(id string, closeError websocket.CloseError) erro
 		return fmt.Errorf("couldn't stop websocket connection. No connection with id %s is open", id)
 	}
 
-	log.Debugf("sending stop signal for websocket %s", w.ID())
+	s.logger.Debugf("sending stop signal for websocket %s", w.ID())
 
 	err := w.Close(closeError)
 	if err == nil {
@@ -383,7 +398,7 @@ func (s *server) stopConnections() {
 	for _, conn := range s.connections {
 		err := conn.Close(websocket.CloseError{Code: websocket.CloseNormalClosure, Text: ""})
 		if err != nil {
-			log.Error("Unable to close connection for ", conn.id, ": ", err.Error())
+			s.logger.Error("Unable to close connection for ", conn.id, ": ", err.Error())
 		}
 	}
 
@@ -398,7 +413,7 @@ func (s *server) Write(webSocketId string, data []byte) error {
 	if !ok {
 		return fmt.Errorf("couldn't write to websocket. No socket with id %v is open", webSocketId)
 	}
-	log.Debugf("queuing data for websocket %s", webSocketId)
+	s.logger.Debugf("queuing data for websocket %s", webSocketId)
 
 	s.metrics.RecordMessageRate(context.Background(), webSocketId, directionOutbound)
 
@@ -413,7 +428,7 @@ func (s *server) wsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "NotFound", http.StatusNotFound)
 		return
 	}
-	log.Debugf("handling new connection for %s from %s", id, r.RemoteAddr)
+	s.logger.Debugf("handling new connection for %s from %s", id, r.RemoteAddr)
 	// Negotiate sub-protocol
 	clientSubProtocols := websocket.Subprotocols(r)
 	negotiatedSubProtocol := ""
@@ -465,7 +480,7 @@ out:
 		return
 	}
 
-	log.Debugf("upgraded websocket connection for %s from %s", id, conn.RemoteAddr().String())
+	s.logger.Debugf("upgraded websocket connection for %s from %s", id, conn.RemoteAddr().String())
 	// If unsupported sub-protocol, terminate the connection immediately
 	if negotiatedSubProtocol == "" {
 		s.error(fmt.Errorf("unsupported subprotocols %v for new client %v (%v)", clientSubProtocols, id, r.RemoteAddr))
@@ -496,7 +511,8 @@ out:
 			s.timeoutConfig.WriteWait,
 			s.timeoutConfig.PingWait,
 			s.timeoutConfig.PingPeriod,
-			s.timeoutConfig.PongWait),
+			s.timeoutConfig.PongWait,
+			s.logger),
 		s.handleMessage,
 		s.handleDisconnect,
 		func(_ Channel, err error) {
@@ -538,7 +554,7 @@ func (s *server) handleDisconnect(w Channel, _ error) {
 	s.connMutex.Lock()
 	delete(s.connections, w.ID())
 	s.connMutex.Unlock()
-	log.Infof("closed connection to %s", w.ID())
+	s.logger.Infof("closed connection to %s", w.ID())
 	if s.disconnectedHandler != nil {
 		s.disconnectedHandler(w)
 	}

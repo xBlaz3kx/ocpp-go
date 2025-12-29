@@ -17,7 +17,7 @@ import (
 
 func (suite *OcppJTestSuite) TestNewClient() {
 	clientID := "mock_id"
-	c := ocppj.NewClient(clientID, suite.mockClient, nil, nil)
+	c := ocppj.NewClient(clientID, suite.mockClient, nil, nil, nil)
 	suite.Assert().NotNil(c)
 	suite.Assert().Equal(clientID, c.Id)
 }
@@ -582,7 +582,7 @@ func (suite *OcppJTestSuite) TestClientRequestFlow() {
 	for i := 0; i < messagesToQueue; i++ {
 		go func(j int) {
 			req := newMockRequest(fmt.Sprintf("%v", j))
-			err = suite.chargePoint.SendRequest(req)
+			err := suite.chargePoint.SendRequest(req)
 			suite.Require().Nil(err)
 		}(i)
 	}
