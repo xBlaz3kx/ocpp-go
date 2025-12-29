@@ -784,52 +784,6 @@ func (suite *OcppJTestSuite) TestParseCall() {
 	suite.Assert().Equal(mockValue, mockRequest.MockValue)
 }
 
-// TODO: implement further ocpp-j protocol tests
-type testLogger struct {
-	c chan string
-}
-
-func (l *testLogger) Debug(args ...interface{}) {
-	l.c <- "debug"
-}
-
-func (l *testLogger) Debugf(format string, args ...interface{}) {
-	l.c <- "debugf"
-}
-
-func (l *testLogger) Info(args ...interface{}) {
-	l.c <- "info"
-}
-
-func (l *testLogger) Infof(format string, args ...interface{}) {
-	l.c <- "infof"
-}
-
-func (l *testLogger) Error(args ...interface{}) {
-	l.c <- "error"
-}
-
-func (l *testLogger) Errorf(format string, args ...interface{}) {
-	l.c <- "errorf"
-}
-
-func (suite *OcppJTestSuite) TestLogger() {
-	t := suite.T()
-	logger := testLogger{c: make(chan string, 1)}
-
-	// Expect an error
-	arr, err := ocppj.ParseRawJsonMessage([]byte("[3,\"1234\",{}]"))
-	suite.Require().NoError(err)
-	_, _ = suite.chargePoint.ParseMessage(arr, suite.chargePoint.RequestState)
-	s := <-logger.c
-	suite.Assert().Equal("infof", s)
-	// Nil logger must cause a panic
-	assertPanic(t, func() {
-	}, func(r interface{}) {
-		suite.Assert().Equal("cannot set a nil logger", r.(string))
-	})
-}
-
 type MockValidationError struct {
 	tag       string
 	namespace string

@@ -668,12 +668,13 @@ func (suite *OcppV16TestSuite) SetupTest() {
 	mockServer := MockWebsocketServer{}
 	suite.mockWsClient = &mockClient
 	suite.mockWsServer = &mockServer
-	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(queueCapacity))
-	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity), noop.NewMeterProvider())
+	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(queueCapacity), nil)
+	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity), noop.NewMeterProvider(), nil)
 	suite.ocppjChargePoint = ocppj.NewClient(
 		"test_id",
 		suite.mockWsClient,
 		suite.clientDispatcher,
+		nil,
 		nil,
 		coreProfile,
 		localAuthListProfile,
@@ -690,6 +691,7 @@ func (suite *OcppV16TestSuite) SetupTest() {
 		suite.mockWsServer,
 		suite.serverDispatcher,
 		nil,
+		nil,
 		coreProfile,
 		localAuthListProfile,
 		firmwareProfile,
@@ -701,8 +703,8 @@ func (suite *OcppV16TestSuite) SetupTest() {
 		securityProfile,
 		secureFirmwareUpdateProfile,
 	)
-	suite.chargePoint, _ = ocpp16.NewChargePoint("test_id", suite.ocppjChargePoint, suite.mockWsClient)
-	suite.centralSystem, _ = ocpp16.NewCentralSystem(suite.ocppjCentralSystem, suite.mockWsServer)
+	suite.chargePoint, _ = ocpp16.NewChargePoint("test_id", suite.ocppjChargePoint, suite.mockWsClient, nil)
+	suite.centralSystem, _ = ocpp16.NewCentralSystem(suite.ocppjCentralSystem, suite.mockWsServer, nil)
 	suite.messageIdGenerator = TestRandomIdGenerator{generator: func() string {
 		return defaultMessageId
 	}}
