@@ -1,8 +1,9 @@
 package diagnostics
 
 import (
-	"github.com/lorenzodonini/ocpp-go/ocpp2.0.1/types"
 	"reflect"
+
+	"github.com/lorenzodonini/ocpp-go/ocpp2.1/types"
 )
 
 const (
