@@ -230,7 +230,7 @@ func (c *Client) SendRequest(request ocpp.Request) error {
 	return nil
 }
 
-// SendEvent s an OCPP SEND event to the server.
+// SendEvent sends an OCPP SEND event to the server.
 func (c *Client) SendEvent(request ocpp.Request) error {
 	if !c.dispatcher.IsRunning() {
 		return fmt.Errorf("ocppj client is not started, couldn't send event")
@@ -254,11 +254,11 @@ func (c *Client) SendEvent(request ocpp.Request) error {
 
 	// Message will be processed by dispatcher. A dedicated mechanism allows to delegate the message queue handling.
 	if err = c.dispatcher.SendEvent(EventBundle{Send: send, Data: jsonMessage}); err != nil {
-		log.Errorf("error dispatching SEND [%s, %s]: %v", send.UniqueId, send.Action, err)
+		c.logger.Errorf("error dispatching SEND [%s, %s]: %v", send.UniqueId, send.Action, err)
 		return err
 	}
 
-	log.Debugf("enqueued SEND [%s, %s]", send.UniqueId, send.Action)
+	c.logger.Debugf("enqueued SEND [%s, %s]", send.UniqueId, send.Action)
 	return nil
 }
 
@@ -369,7 +369,7 @@ func (c *Client) ocppMessageHandler(data []byte) error {
 			}
 		case CALL_RESULT_ERROR:
 			callError := message.(*CallResultError)
-			log.Debugf("handling incoming CALL RESULT ERROR [%s]", callError.UniqueId)
+			c.logger.Debugf("handling incoming CALL RESULT ERROR [%s]", callError.UniqueId)
 			if c.errorHandler != nil {
 				c.errorHandler(ocpp.NewError(callError.ErrorCode, callError.ErrorDescription, callError.UniqueId), callError.ErrorDetails)
 			}

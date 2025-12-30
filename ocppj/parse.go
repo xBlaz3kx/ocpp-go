@@ -3,8 +3,9 @@ package ocppj
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"reflect"
+
+	"github.com/xBlaz3kx/ocpp-go/ocpp"
 )
 
 func parseRawJsonRequest(raw interface{}, requestType reflect.Type) (ocpp.Request, error) {
@@ -45,7 +46,7 @@ func parseRawJsonConfirmation(raw interface{}, confirmationType reflect.Type) (o
 func jsonMarshal(t interface{}) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
-	encoder.SetEscapeHTML(EscapeHTML)
+	encoder.SetEscapeHTML(EscapeHTML.Load())
 	err := encoder.Encode(t)
 	return bytes.TrimRight(buffer.Bytes(), "\n"), err
 }

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"reflect"
 	"sync/atomic"
 
+	"github.com/xBlaz3kx/ocpp-go/logging"
 	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
@@ -338,6 +338,7 @@ func errorFromValidation(d dialector, validationErrors validator.ValidationError
 type Endpoint struct {
 	dialect  ocpp.Dialect
 	Profiles []*ocpp.Profile
+	logger   logging.Logger
 }
 
 // Sets endpoint dialect.
@@ -494,7 +495,7 @@ func (endpoint *Endpoint) ParseMessage(arr []interface{}, pendingRequestState Cl
 
 		_, ok := pendingRequestState.GetPendingRequest(uniqueId)
 		if !ok {
-			log.Infof("No previous request %v sent. Discarding error message", uniqueId)
+			endpoint.log.Infof("No previous request %v sent. Discarding error message", uniqueId)
 			return nil, nil
 		}
 
@@ -606,7 +607,7 @@ func (endpoint *Endpoint) CreateSend(request ocpp.Request) (*Send, error) {
 		Action:        action,
 		Payload:       request,
 	}
-	if validationEnabled {
+	if validationEnabled.Load() {
 		err := Validate.Struct(send)
 		if err != nil {
 			return nil, err
@@ -624,7 +625,7 @@ func (endpoint *Endpoint) CreateCallResultError(uniqueId string, code ocpp.Error
 		ErrorDescription: description,
 		ErrorDetails:     details,
 	}
-	if validationEnabled {
+	if validationEnabled.Load() {
 		err := Validate.Struct(callError)
 		if err != nil {
 			return nil, err

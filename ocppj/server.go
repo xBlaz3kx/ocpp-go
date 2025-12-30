@@ -318,6 +318,7 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 		s.logger.Error(err)
 		return err
 	}
+
 	if message != nil {
 		switch message.GetMessageTypeId() {
 		case CALL:
@@ -350,12 +351,14 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 			if s.errorHandler != nil {
 				s.errorHandler(wsChannel, ocpp.NewError(callResultError.ErrorCode, callResultError.ErrorDescription, callResultError.UniqueId), callResultError.ErrorDetails)
 			}
+			// todo metrics
 		case SEND:
 			send := message.(*Send)
 			s.logger.Debugf("handling incoming SEND [%s, %s] from %s", send.UniqueId, send.Action, wsChannel.ID())
 			if s.requestHandler != nil {
 				s.requestHandler(wsChannel, send.Payload, send.UniqueId, send.Action)
 			}
+			// todo metrics
 		}
 	}
 	return nil
