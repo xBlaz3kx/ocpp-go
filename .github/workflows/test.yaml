@@ -22,7 +22,7 @@ jobs:
         run: |
           make unit-tests
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unit_coverage_${{ github.sha }}
           path: ./coverage.out
@@ -45,7 +45,7 @@ jobs:
         run: |
           sed '1d;$d' integration_coverage.out >> coverage.out
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage_${{ github.sha }}
           path: ./coverage.out
@@ -73,7 +73,7 @@ jobs:
           echo "SUMMARY_201=$(jq -r '${{ github.workspace }}/results' summary_201.json)" >> "$GITHUB_OUTPUT"
 
       - name: Report performance test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           path: ${{ github.workspace }}/results
           name: performance_test_results_${{ github.sha }}
