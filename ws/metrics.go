@@ -3,7 +3,6 @@ package ws
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -26,8 +25,7 @@ const (
 )
 
 type serverMetrics struct {
-	connectedChargePoints int64
-	mu                    sync.Mutex
+	connectedChargePoints atomic.Int64
 
 	chargePointsConnectedMetric metric.Int64ObservableGauge
 	pingPongDurationMetric      metric.Float64Histogram
@@ -42,7 +40,7 @@ func newServerMetrics(meterProvider metric.MeterProvider) (*serverMetrics, error
 		chargePointsConnectedMetric,
 		metric.WithDescription("Number of currently connected charge points"),
 		metric.WithInt64Callback(func(ctx context.Context, io metric.Int64Observer) error {
-			io.Observe(m.connectedChargePoints)
+			io.Observe(m.connectedChargePoints.Load())
 			return nil
 		}),
 	)
@@ -74,22 +72,16 @@ func newServerMetrics(meterProvider metric.MeterProvider) (*serverMetrics, error
 }
 
 func (m *serverMetrics) IncrementChargePoints() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	atomic.AddInt64(&m.connectedChargePoints, 1)
+	m.connectedChargePoints.Add(1)
 }
 
 func (m *serverMetrics) DecrementChargePoints() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	// Only positive values are allowed
-	if m.connectedChargePoints == 0 {
+	if m.connectedChargePoints.Load() == 0 {
 		return
 	}
 
-	atomic.AddInt64(&m.connectedChargePoints, -1)
+	m.connectedChargePoints.Add(1)
 }
 
 func (m *serverMetrics) RecordMessageRate(ctx context.Context, chargePointId string, direction string) {

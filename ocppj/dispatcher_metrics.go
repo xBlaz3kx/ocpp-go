@@ -49,6 +49,7 @@ func newDispatcherMetrics(meterProvider metric.MeterProvider, logger logging.Log
 		meter:           meter,
 		requestQueue:    clientQueue,
 		pendingRequests: clientPendingRequest,
+		logger:          logger,
 	}
 
 	return dispatcher, nil
@@ -59,26 +60,24 @@ func (d *dispatcherMetrics) ObserveInFlightRequests(state *serverState) {
 		return
 	}
 
-	_, err := d.meter.RegisterCallback(
-		func(ctx context.Context, obs metric.Observer) error {
-			state.mutex.RLock()
-			currentState := state.pendingRequestState
-			state.mutex.RUnlock()
+	_, err := d.meter.RegisterCallback(func(ctx context.Context, obs metric.Observer) error {
+		state.mutex.RLock()
+		currentState := state.pendingRequestState
+		state.mutex.RUnlock()
 
-			for clientID, clientState := range currentState {
-				inFlightRequest := int64(0)
-				if clientState.HasPendingRequest() {
-					inFlightRequest = 1
-				}
-				obs.ObserveInt64(
-					d.pendingRequests,
-					inFlightRequest,
-					metric.WithAttributes(attribute.String("client_id", clientID)),
-				)
+		for clientID, clientState := range currentState {
+			inFlightRequest := int64(0)
+			if clientState.HasPendingRequest() {
+				inFlightRequest = 1
 			}
-			return nil
-		},
-		d.pendingRequests)
+			obs.ObserveInt64(
+				d.pendingRequests,
+				inFlightRequest,
+				metric.WithAttributes(attribute.String("client_id", clientID)),
+			)
+		}
+		return nil
+	}, d.pendingRequests)
 	if err != nil {
 		d.logger.Errorf("failed to register callback for inflight queue size: %v", err)
 	}
