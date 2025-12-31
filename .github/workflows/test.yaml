@@ -35,7 +35,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
       - name: Download coverage from unit tests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: unit_coverage_${{ github.sha }}
       - name: Run integration tests
@@ -109,7 +109,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
       - name: Download coverage from tests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: coverage_${{ github.sha }}
       - name: Publish
