@@ -21,7 +21,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.34.0
 	go.opentelemetry.io/otel/sdk/metric v1.34.0
 	google.golang.org/grpc v1.70.0
-	gopkg.in/go-playground/validator.v9 v9.30.0
+	gopkg.in/go-playground/validator.v9 v9.31.0
 )
 
 require (
