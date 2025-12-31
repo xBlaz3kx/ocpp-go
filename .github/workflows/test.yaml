@@ -17,7 +17,7 @@ jobs:
     name: Unit tests
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
       - name: Run tests
         run: |
           make unit-tests
@@ -33,7 +33,7 @@ jobs:
     needs: unit
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
       - name: Download coverage from unit tests
         uses: actions/download-artifact@v7
         with:
@@ -58,7 +58,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
 
       - name: Run OCPP 1.6 performance tests
         id: ocpp16-perf-test
@@ -107,7 +107,7 @@ jobs:
     name: Publish coverage
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
       - name: Download coverage from tests
         uses: actions/download-artifact@v7
         with:
