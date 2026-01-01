@@ -16,7 +16,8 @@ import (
 )
 
 func (suite *OcppJTestSuite) TestNewServer() {
-	s := ocppj.NewServer(nil, nil, nil, nil)
+	s, err := ocppj.NewServer(nil, nil, nil, nil)
+	suite.Require().NoError(err)
 	suite.Assert().NotNil(s)
 }
 

@@ -38,25 +38,34 @@ type Client struct {
 //
 // The wsClient parameter cannot be nil. Refer to the ws package for information on how to create and
 // customize a websocket client. If logger is nil, a VoidLogger will be used.
-func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, stateHandler ClientState, logger logging.Logger, profiles ...*ocpp.Profile) *Client {
+func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, stateHandler ClientState, logger logging.Logger, profiles ...*ocpp.Profile) (*Client, error) {
 	endpoint := Endpoint{}
-	if wsClient == nil {
-		panic("wsClient parameter cannot be nil")
-	}
-	if logger == nil {
-		logger = &logging.VoidLogger{}
-	}
 	for _, profile := range profiles {
 		endpoint.AddProfile(profile)
 	}
+
+	if wsClient == nil {
+		return nil, errors.New("ws client cannot be nil")
+	}
+
+	// Create a void logger if none is provided
+	if logger == nil {
+		logger = &logging.VoidLogger{}
+	}
+
+	// Create a default dispatcher if none is provided
 	if dispatcher == nil {
 		dispatcher = NewDefaultClientDispatcher(NewFIFOClientQueue(10), logger)
 	}
+
+	// Create a default state handler if none is provided
 	if stateHandler == nil {
 		stateHandler = NewClientState()
 	}
+
 	dispatcher.SetNetworkClient(wsClient)
 	dispatcher.SetPendingRequestState(stateHandler)
+
 	return &Client{
 		Endpoint:     endpoint,
 		logger:       logger,
@@ -64,7 +73,7 @@ func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, state
 		Id:           id,
 		dispatcher:   dispatcher,
 		RequestState: stateHandler,
-	}
+	}, nil
 }
 
 // Return incoming requests handler.

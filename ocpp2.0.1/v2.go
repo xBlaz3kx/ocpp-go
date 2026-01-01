@@ -209,16 +209,38 @@ type ChargingStation interface {
 //
 // For more advanced options, or if a custom networking/occpj layer is required,
 // please refer to ocppj.Client and ws.Client.
-func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, logger logging.Logger) ChargingStation {
+func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, logger logging.Logger) (ChargingStation, error) {
 	if client == nil {
 		client = ws.NewClient()
 	}
 	client.SetRequestedSubProtocol(types.V201Subprotocol)
 
+	var err error
 	if endpoint == nil {
 		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0), logger)
-		endpoint = ocppj.NewClient(id, client, dispatcher, nil, logger, authorization.Profile, availability.Profile, data.Profile, diagnostics.Profile, display.Profile, firmware.Profile, iso15118.Profile, localauth.Profile, meter.Profile, provisioning.Profile, remotecontrol.Profile, reservation.Profile, security.Profile, smartcharging.Profile, tariffcost.Profile, transactions.Profile)
+		endpoint, err = ocppj.NewClient(id, client, dispatcher, nil, logger,
+			authorization.Profile,
+			availability.Profile,
+			data.Profile,
+			diagnostics.Profile,
+			display.Profile,
+			firmware.Profile,
+			iso15118.Profile,
+			localauth.Profile,
+			meter.Profile,
+			provisioning.Profile,
+			remotecontrol.Profile,
+			reservation.Profile,
+			security.Profile,
+			smartcharging.Profile,
+			tariffcost.Profile,
+			transactions.Profile,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	endpoint.SetDialect(ocpp.V2)
 
 	cs := chargingStation{
@@ -238,7 +260,8 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, log
 		cs.errorHandler <- err
 	})
 	cs.client.SetRequestHandler(cs.handleIncomingRequest)
-	return &cs
+
+	return &cs, nil
 }
 
 // -------------------- v2.0 CSMS --------------------
@@ -423,8 +446,9 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server, logger logging.Logger) (C
 
 	server.AddSupportedSubprotocol(types.V201Subprotocol)
 
+	var err error
 	if endpoint == nil {
-		endpoint = ocppj.NewServer(server, nil, nil, logger,
+		endpoint, err = ocppj.NewServer(server, nil, nil, logger,
 			authorization.Profile,
 			availability.Profile,
 			data.Profile,
@@ -442,7 +466,11 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server, logger logging.Logger) (C
 			tariffcost.Profile,
 			transactions.Profile,
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	cs, err := newCSMS(endpoint)
 	if err != nil {
 		return nil, err

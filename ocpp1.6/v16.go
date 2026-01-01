@@ -167,9 +167,10 @@ func NewChargePoint(id string, endpoint *ocppj.Client, client ws.Client, logger 
 
 	client.SetRequestedSubProtocol(types.V16Subprotocol)
 
+	var err error
 	if endpoint == nil {
 		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0), logger)
-		endpoint = ocppj.NewClient(
+		endpoint, err = ocppj.NewClient(
 			id,
 			client,
 			dispatcher,
@@ -188,6 +189,10 @@ func NewChargePoint(id string, endpoint *ocppj.Client, client ws.Client, logger 
 			securefirmware.Profile,
 		)
 	}
+	if err != nil {
+		return nil, err
+	}
+
 	endpoint.SetDialect(ocpp.V16)
 
 	cp := chargePoint{
@@ -349,8 +354,9 @@ func NewCentralSystem(endpoint *ocppj.Server, server ws.Server, logger log.Logge
 	}
 	server.AddSupportedSubprotocol(types.V16Subprotocol)
 
+	var err error
 	if endpoint == nil {
-		endpoint = ocppj.NewServer(server, nil, nil, logger,
+		endpoint, err = ocppj.NewServer(server, nil, nil, logger,
 			core.Profile,
 			localauth.Profile,
 			firmware.Profile,
@@ -363,6 +369,9 @@ func NewCentralSystem(endpoint *ocppj.Server, server ws.Server, logger log.Logge
 			certificates.Profile,
 			securefirmware.Profile,
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	cs, err := newCentralSystem(endpoint)

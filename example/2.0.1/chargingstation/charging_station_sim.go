@@ -31,11 +31,11 @@ const (
 
 var log *logrus.Logger
 
-func setupChargingStation(chargingStationID string) ocpp2.ChargingStation {
+func setupChargingStation(chargingStationID string) (ocpp2.ChargingStation, error) {
 	return ocpp2.NewChargingStation(chargingStationID, nil, nil, log)
 }
 
-func setupTlsChargingStation(chargingStationID string) ocpp2.ChargingStation {
+func setupTlsChargingStation(chargingStationID string) (ocpp2.ChargingStation, error) {
 	certPool, err := x509.SystemCertPool()
 	if err != nil {
 		log.Fatal(err)
@@ -197,12 +197,17 @@ func main() {
 	// Check if TLS enabled
 	t, _ := os.LookupEnv(envVarTls)
 	tlsEnabled, _ := strconv.ParseBool(t)
+	var err error
 	// Prepare OCPP 2.0.1 charging station (chargingStation variable is defined in handler.go)
 	if tlsEnabled {
-		chargingStation = setupTlsChargingStation(id)
+		chargingStation, err = setupTlsChargingStation(id)
 	} else {
-		chargingStation = setupChargingStation(id)
+		chargingStation, err = setupChargingStation(id)
 	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Setup some basic state management
 	evse := EVSEInfo{
 		availability:       availability.OperationalStatusOperative,
@@ -244,7 +249,7 @@ func main() {
 	chargingStation.SetTransactionsHandler(handler)
 
 	// Connects to central system
-	err := chargingStation.Start(csmsUrl)
+	err = chargingStation.Start(csmsUrl)
 	if err != nil {
 		log.Error(err)
 	} else {

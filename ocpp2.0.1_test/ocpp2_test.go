@@ -1099,14 +1099,19 @@ func (suite *OcppV2TestSuite) SetupTest() {
 	transactionsProfile := transactions.Profile
 	mockClient := MockWebsocketClient{}
 	mockServer := MockWebsocketServer{}
+	var err error
 	suite.mockWsClient = &mockClient
 	suite.mockWsServer = &mockServer
 	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(queueCapacity), nil)
 	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity), noop.NewMeterProvider(), nil)
-	suite.ocppjClient = ocppj.NewClient("test_id", suite.mockWsClient, suite.clientDispatcher, nil, nil, securityProfile, provisioningProfile, authProfile, availabilityProfile, reservationProfile, diagnosticsProfile, dataProfile, displayProfile, firmwareProfile, isoProfile, localAuthProfile, meterProfile, remoteProfile, smartChargingProfile, tariffProfile, transactionsProfile)
-	suite.ocppjServer = ocppj.NewServer(suite.mockWsServer, suite.serverDispatcher, nil, nil, securityProfile, provisioningProfile, authProfile, availabilityProfile, reservationProfile, diagnosticsProfile, dataProfile, displayProfile, firmwareProfile, isoProfile, localAuthProfile, meterProfile, remoteProfile, smartChargingProfile, tariffProfile, transactionsProfile)
-	suite.chargingStation = ocpp2.NewChargingStation("test_id", suite.ocppjClient, suite.mockWsClient, nil)
-	suite.csms, _ = ocpp2.NewCSMS(suite.ocppjServer, suite.mockWsServer, nil)
+	suite.ocppjClient, err = ocppj.NewClient("test_id", suite.mockWsClient, suite.clientDispatcher, nil, nil, securityProfile, provisioningProfile, authProfile, availabilityProfile, reservationProfile, diagnosticsProfile, dataProfile, displayProfile, firmwareProfile, isoProfile, localAuthProfile, meterProfile, remoteProfile, smartChargingProfile, tariffProfile, transactionsProfile)
+	suite.Require().NoError(err)
+	suite.ocppjServer, err = ocppj.NewServer(suite.mockWsServer, suite.serverDispatcher, nil, nil, securityProfile, provisioningProfile, authProfile, availabilityProfile, reservationProfile, diagnosticsProfile, dataProfile, displayProfile, firmwareProfile, isoProfile, localAuthProfile, meterProfile, remoteProfile, smartChargingProfile, tariffProfile, transactionsProfile)
+	suite.Require().NoError(err)
+	suite.chargingStation, err = ocpp2.NewChargingStation("test_id", suite.ocppjClient, suite.mockWsClient, nil)
+	suite.Require().NoError(err)
+	suite.csms, err = ocpp2.NewCSMS(suite.ocppjServer, suite.mockWsServer, nil)
+	suite.Require().NoError(err)
 	suite.messageIdGenerator = TestRandomIdGenerator{generator: func() string {
 		return defaultMessageId
 	}}

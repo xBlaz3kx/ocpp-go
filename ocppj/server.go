@@ -52,7 +52,7 @@ func NewServer(
 	stateHandler ServerState,
 	logger logging.Logger,
 	profiles ...*ocpp.Profile,
-) *Server {
+) (*Server, error) {
 	if logger == nil {
 		logger = &logging.VoidLogger{}
 	}
@@ -60,11 +60,10 @@ func NewServer(
 	meterProvider := otel.GetMeterProvider()
 	metrics, err := newOcppServerMetrics(meterProvider, "")
 	if err != nil {
-		logger.Error(errors.Wrapf(err, "failed to create OCPP metrics"))
-		// todo improve error handling
-		return nil
+		return nil, errors.New("failed to create OCPP metrics")
 	}
 
+	// Create default dispatcher and state handler if not provided
 	if dispatcher == nil {
 		dispatcher = NewDefaultServerDispatcher(NewFIFOQueueMap(0), meterProvider, logger)
 	}
@@ -97,7 +96,8 @@ func NewServer(
 	for _, profile := range profiles {
 		s.AddProfile(profile)
 	}
-	return &s
+
+	return &s, nil
 }
 
 // Registers a handler for incoming requests.
