@@ -194,12 +194,12 @@ func (d *DefaultClientDispatcher) SendEvent(req EventBundle) error {
 	if d.network == nil {
 		return fmt.Errorf("cannot SendEvent, no network client was set")
 	}
+
 	if err := d.requestQueue.Push(req); err != nil {
 		return err
 	}
-	d.mutex.RLock()
 	d.requestChannel <- true
-	d.mutex.RUnlock()
+
 	return nil
 }
 
@@ -549,12 +549,12 @@ func (d *DefaultServerDispatcher) SendEvent(clientID string, req EventBundle) er
 	if !ok {
 		return fmt.Errorf("cannot send event %s, no client %s exists", req.Send.UniqueId, clientID)
 	}
+
 	if err := q.Push(req); err != nil {
 		return err
 	}
-	d.mutex.RLock()
+
 	d.requestChannel <- clientID
-	d.mutex.RUnlock()
 	return nil
 }
 
@@ -626,13 +626,40 @@ func (d *DefaultServerDispatcher) messagePump() {
 					d.logger.Error("dispatcher timeout for client %s triggered, but no pending request found", clientID)
 					continue
 				}
-				bundle, _ := el.(RequestBundle)
-				d.CompleteRequest(clientID, bundle.Call.UniqueId)
-				d.logger.Infof("request %v for %v timed out", bundle.Call.UniqueId, clientID)
-				if d.onRequestCancel != nil {
-					d.onRequestCancel(clientID, bundle.Call.UniqueId, bundle.Call.Payload,
-						ocpp.NewError(GenericError, "Request timed out", bundle.Call.UniqueId))
+
+				switch el.(type) {
+				case RequestBundle:
+					bundle, _ := el.(RequestBundle)
+
+					if bundle.Call == nil {
+						d.logger.Errorf("invalid request bundle for client %s: Call field is nil", clientID)
+						continue
+					}
+
+					d.CompleteRequest(clientID, bundle.Call.UniqueId)
+
+					d.logger.Infof("request %v for %v timed out", bundle.Call.UniqueId, clientID)
+					if d.onRequestCancel != nil {
+						d.onRequestCancel(clientID, bundle.Call.UniqueId, bundle.Call.Payload,
+							ocpp.NewError(GenericError, "Request timed out", bundle.Call.UniqueId))
+					}
+
+				case EventBundle:
+					bundle, _ := el.(EventBundle)
+					if bundle.Send == nil {
+						d.logger.Errorf("invalid event bundle for client %s: Send field is nil", clientID)
+						continue
+					}
+
+					d.CompleteRequest(clientID, bundle.Send.GetUniqueId())
+
+					d.logger.Infof("request %v for %v timed out", bundle.Send.GetUniqueId(), clientID)
+					if d.onRequestCancel != nil {
+						d.onRequestCancel(clientID, bundle.Send.GetUniqueId(), bundle.Send.Payload,
+							ocpp.NewError(GenericError, "Request timed out", bundle.Send.GetUniqueId()))
+					}
 				}
+
 			}
 		case clientID = <-d.readyForDispatch:
 			// Cancel previous timeout (if any)
