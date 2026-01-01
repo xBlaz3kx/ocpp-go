@@ -28,12 +28,11 @@ const (
 
 var log *logrus.Logger
 
-func setupChargePoint(chargePointID string) ocpp16.ChargePoint {
-	cp, _ := ocpp16.NewChargePoint(chargePointID, nil, nil, log.WithField("logger", "ocppj"))
-	return cp
+func setupChargePoint(chargePointID string) (ocpp16.ChargePoint, error) {
+	return ocpp16.NewChargePoint(chargePointID, nil, nil, log.WithField("logger", "ocppj"))
 }
 
-func setupTlsChargePoint(chargePointID string) ocpp16.ChargePoint {
+func setupTlsChargePoint(chargePointID string) (ocpp16.ChargePoint, error) {
 	certPool, err := x509.SystemCertPool()
 	if err != nil {
 		log.Fatal(err)
@@ -68,8 +67,7 @@ func setupTlsChargePoint(chargePointID string) ocpp16.ChargePoint {
 		Certificates: clientCertificates,
 	}))
 
-	cp, _ := ocpp16.NewChargePoint(chargePointID, nil, client, log)
-	return cp
+	return ocpp16.NewChargePoint(chargePointID, nil, client, log)
 }
 
 // exampleRoutine simulates a charge point flow, where
@@ -154,13 +152,18 @@ func main() {
 	}
 	// Check if TLS enabled
 	t, _ := os.LookupEnv(envVarTls)
+	var err error
 	tlsEnabled, _ := strconv.ParseBool(t)
 	// Prepare OCPP 1.6 charge point (chargePoint variable is defined in handler.go)
 	if tlsEnabled {
-		chargePoint = setupTlsChargePoint(id)
+		chargePoint, err = setupTlsChargePoint(id)
 	} else {
-		chargePoint = setupChargePoint(id)
+		chargePoint, err = setupChargePoint(id)
 	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Setup some basic state management
 	connectors := map[int]*ConnectorInfo{
 		1: {status: core.ChargePointStatusAvailable, availability: core.AvailabilityTypeOperative, currentTransaction: 0},
@@ -187,7 +190,7 @@ func main() {
 	chargePoint.SetSecurityHandler(handler)
 
 	// Connects to central system
-	err := chargePoint.Start(csUrl)
+	err = chargePoint.Start(csUrl)
 	if err != nil {
 		log.Errorln(err)
 	} else {

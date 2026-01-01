@@ -368,14 +368,17 @@ func (suite *OcppJTestSuite) SetupTest() {
 	mockProfile := ocpp.NewProfile("mock", &MockFeature{})
 	mockClient := MockWebsocketClient{}
 	mockServer := MockWebsocketServer{}
+	var err error
 	suite.mockClient = &mockClient
 	suite.mockServer = &mockServer
 	suite.clientRequestQueue = ocppj.NewFIFOClientQueue(queueCapacity)
 	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(suite.clientRequestQueue, nil)
-	suite.chargePoint = ocppj.NewClient("mock_id", suite.mockClient, suite.clientDispatcher, nil, nil, mockProfile)
+	suite.chargePoint, err = ocppj.NewClient("mock_id", suite.mockClient, suite.clientDispatcher, nil, nil, mockProfile)
+	suite.Assert().NoError(err)
 	suite.serverRequestMap = ocppj.NewFIFOQueueMap(queueCapacity)
 	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap, noop.NewMeterProvider(), nil)
-	suite.centralSystem = ocppj.NewServer(suite.mockServer, suite.serverDispatcher, nil, nil, mockProfile)
+	suite.centralSystem, err = ocppj.NewServer(suite.mockServer, suite.serverDispatcher, nil, nil, mockProfile)
+	suite.Assert().NoError(err)
 	defaultDialect := ocpp.V16 // set default to version 1.6 format error *for test only
 	suite.centralSystem.SetDialect(defaultDialect)
 	suite.chargePoint.SetDialect(defaultDialect)
