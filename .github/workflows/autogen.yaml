@@ -48,7 +48,7 @@ jobs:
         run: mockery
 
         # Commit all changed files back to the repository
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: stefanzweifel/git-auto-commit-action@v7
         #with:
         #  commit_message: [ Autogen ] Generated mocks
         #  # Mockery can generate new files, so we need to add them to the commit as well
