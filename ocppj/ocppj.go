@@ -495,7 +495,7 @@ func (endpoint *Endpoint) ParseMessage(arr []interface{}, pendingRequestState Cl
 
 		_, ok := pendingRequestState.GetPendingRequest(uniqueId)
 		if !ok {
-			endpoint.log.Infof("No previous request %v sent. Discarding error message", uniqueId)
+			// endpoint.log.Infof("No previous request %v sent. Discarding error message", uniqueId)
 			return nil, nil
 		}
 
