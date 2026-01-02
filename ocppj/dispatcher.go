@@ -241,7 +241,23 @@ func (d *DefaultClientDispatcher) messagePump() {
 func (d *DefaultClientDispatcher) dispatchNextRequest() {
 	// Get first element in queue
 	el := d.requestQueue.Peek()
-	bundle, _ := el.(RequestBundle)
+
+	bundle, canCast := el.(RequestBundle)
+	if !canCast {
+		d.logger.Errorf("failed to cast request queue element to RequestBundle")
+		return
+	}
+
+	if bundle.Call == nil {
+		d.logger.Errorf("request bundle has no Call associated")
+		return
+	}
+
+	if bundle.Data == nil {
+		d.logger.Errorf("request bundle has no Data associated")
+		return
+	}
+
 	jsonMessage := bundle.Data
 	d.pendingRequestState.AddPendingRequest(bundle.Call.UniqueId, bundle.Call.Payload)
 	// Attempt to send over network
@@ -254,6 +270,7 @@ func (d *DefaultClientDispatcher) dispatchNextRequest() {
 				ocpp.NewError(InternalError, err.Error(), bundle.Call.UniqueId))
 		}
 	}
+
 	d.logger.Infof("dispatched request %s to server", bundle.Call.UniqueId)
 	d.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
 }
@@ -614,8 +631,22 @@ func (d *DefaultServerDispatcher) dispatchNextRequest(clientID string) (clientCt
 		return
 	}
 	el := q.Peek()
-	bundle, _ := el.(RequestBundle)
+	bundle, canCast := el.(RequestBundle)
+	if !canCast {
+		d.logger.Errorf("failed to cast request queue element to RequestBundle for client %s", clientID)
+		return
+	}
+
 	jsonMessage := bundle.Data
+	if bundle.Call == nil {
+		d.logger.Errorf("request bundle has no Call associated")
+		return
+	}
+	if bundle.Data == nil {
+		d.logger.Errorf("request bundle has no Data associated")
+		return
+	}
+
 	callID := bundle.Call.GetUniqueId()
 	d.pendingRequestState.AddPendingRequest(clientID, callID, bundle.Call.Payload)
 	err := d.network.Write(clientID, jsonMessage)
