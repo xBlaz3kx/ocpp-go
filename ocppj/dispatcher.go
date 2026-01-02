@@ -584,13 +584,40 @@ func (d *DefaultServerDispatcher) messagePump() {
 					log.Error("dispatcher timeout for client %s triggered, but no pending request found", clientID)
 					continue
 				}
-				bundle, _ := el.(RequestBundle)
-				d.CompleteRequest(clientID, bundle.Call.UniqueId)
-				log.Infof("request %v for %v timed out", bundle.Call.UniqueId, clientID)
-				if d.onRequestCancel != nil {
-					d.onRequestCancel(clientID, bundle.Call.UniqueId, bundle.Call.Payload,
-						ocpp.NewError(GenericError, "Request timed out", bundle.Call.UniqueId))
+
+				switch el.(type) {
+				case RequestBundle:
+					bundle, _ := el.(RequestBundle)
+
+					if bundle.Call == nil {
+						log.Errorf("invalid request bundle for client %s: Call field is nil", clientID)
+						continue
+					}
+
+					d.CompleteRequest(clientID, bundle.Call.UniqueId)
+
+					log.Infof("request %v for %v timed out", bundle.Call.UniqueId, clientID)
+					if d.onRequestCancel != nil {
+						d.onRequestCancel(clientID, bundle.Call.UniqueId, bundle.Call.Payload,
+							ocpp.NewError(GenericError, "Request timed out", bundle.Call.UniqueId))
+					}
+
+				case EventBundle:
+					bundle, _ := el.(EventBundle)
+					if bundle.Send == nil {
+						log.Errorf("invalid event bundle for client %s: Send field is nil", clientID)
+						continue
+					}
+
+					d.CompleteRequest(clientID, bundle.Send.GetUniqueId())
+
+					log.Infof("request %v for %v timed out", bundle.Send.GetUniqueId(), clientID)
+					if d.onRequestCancel != nil {
+						d.onRequestCancel(clientID, bundle.Send.GetUniqueId(), bundle.Send.Payload,
+							ocpp.NewError(GenericError, "Request timed out", bundle.Send.GetUniqueId()))
+					}
 				}
+
 			}
 		case clientID = <-d.readyForDispatch:
 			// Cancel previous timeout (if any)
