@@ -45,7 +45,7 @@ services:
         set -e
         set -o pipefail
         touch benchmarks.txt
-        go test -bench=. -benchmem ./ocppj | tee -a benchmarks.txt
+        go test -bench=. -benchmem ./ocppj -cpu=1,2,4 | tee -a benchmarks.txt
    #     go test -bench=. -benchmem ./ws | tee -a benchmarks.txt
    #     go test -bench=. -benchmem github.com/xBlaz3kx/ocpp-go/internal/... | tee -a benchmarks.txt
 
