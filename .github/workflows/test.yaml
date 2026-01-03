@@ -219,7 +219,7 @@ jobs:
             ### OCPP 2.0.1
             ${{steps.ocpp201-perf-test.outputs.SUMMARY_201}}
 
-            ### OCPP 2.0.1
+            ### OCPP 2.1
             ${{steps.ocpp21-perf-test.outputs.SUMMARY_21}}
 
           pr-number: ${{ github.event.pull_request.number }}

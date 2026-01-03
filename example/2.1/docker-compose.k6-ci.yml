@@ -2,6 +2,7 @@ version: '3.9'
 
 services:
   csms:
+    container_name: csms_21
     hostname: csms_21
     ports:
       - "8889:8887"
