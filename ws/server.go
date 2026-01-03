@@ -554,6 +554,7 @@ func (s *server) handleDisconnect(w Channel, _ error) {
 	s.connMutex.Lock()
 	delete(s.connections, w.ID())
 	s.connMutex.Unlock()
+
 	s.logger.Infof("closed connection to %s", w.ID())
 	if s.disconnectedHandler != nil {
 		s.disconnectedHandler(w)

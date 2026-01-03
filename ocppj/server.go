@@ -318,6 +318,7 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 		s.logger.Error(err)
 		return err
 	}
+
 	if message != nil {
 		switch message.GetMessageTypeId() {
 		case CALL:
@@ -343,6 +344,21 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 				s.errorHandler(wsChannel, ocpp.NewError(callError.ErrorCode, callError.ErrorDescription, callError.UniqueId), callError.ErrorDetails)
 			}
 			// todo add metric for error
+		case CALL_RESULT_ERROR:
+			callResultError := message.(*CallResultError)
+			s.logger.Debugf("handling incoming CALL RESULT ERROR [%s] from %s", callResultError.UniqueId, wsChannel.ID())
+			// Nothing to complete s.dispatcher.CompleteRequest(wsChannel.ID(), callResultError.GetUniqueId())
+			if s.errorHandler != nil {
+				s.errorHandler(wsChannel, ocpp.NewError(callResultError.ErrorCode, callResultError.ErrorDescription, callResultError.UniqueId), callResultError.ErrorDetails)
+			}
+			// todo metrics
+		case SEND:
+			send := message.(*Send)
+			s.logger.Debugf("handling incoming SEND [%s, %s] from %s", send.UniqueId, send.Action, wsChannel.ID())
+			if s.requestHandler != nil {
+				s.requestHandler(wsChannel, send.Payload, send.UniqueId, send.Action)
+			}
+			// todo metrics
 		}
 	}
 	return nil
@@ -372,6 +388,7 @@ func (s *Server) HandleFailedResponseError(clientID string, requestID string, er
 		// Unknown error
 		responseErr = ocpp.NewError(GenericError, err.Error(), requestID)
 	}
+
 	// Send an OCPP error to the target, since no regular response could be sent
 	_ = s.SendError(clientID, requestID, responseErr.Code, responseErr.Description, nil)
 }

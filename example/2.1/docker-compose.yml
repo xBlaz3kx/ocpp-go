@@ -1,0 +1,36 @@
+version: '3'
+services:
+  csms:
+    build:
+      context: ../..
+      dockerfile: example/2.1/csms/Dockerfile
+    image: ldonini/ocpp2.1-csms:latest
+    container_name: csms
+    environment:
+      - SERVER_LISTEN_PORT=8887
+      - METRICS_ENABLED=${METRICS_ENABLED:-false}
+      - METRICS_ADDRESS=${METRICS_ADDRESS:-lgtm-stack:4317}
+      - PROFILING_ENABLED=${PROFILING_ENABLED:-false}
+      - PYROSCOPE_ADDRESS=${PYROSCOPE_ADDRESS:-http://lgtm-stack:4040}
+    ports:
+      - "8887:8887"
+    networks:
+      - sim
+    # tty: true
+
+  charging-station:
+    build:
+      context: ../..
+      dockerfile: chargingstation/Dockerfile
+    image: ldonini/ocpp2.1-chargingstation:latest
+    container_name: charging-station
+    environment:
+      - CLIENT_ID=chargingStationSim
+      - CSMS_URL=ws://csms:8887
+    networks:
+      - sim
+    # tty: true
+
+networks:
+  sim:
+    driver: bridge

@@ -1,5 +1,5 @@
 # OCPP_VERSION variable for examples and performance tests (default: 1.6)
-# Supported versions: 1.6, 2.0.1
+# Supported versions: 1.6, 2.0.1, 2.1
 OCPP_VERSION ?= 1.6
 
 # Derive directory path and service name from OCPP_VERSION
@@ -58,8 +58,14 @@ perf-tests-ocpp16:
 perf-tests-ocpp201:
 	$(MAKE) perf-tests OCPP_VERSION=2.0.1
 
+perf-tests-ocpp21:
+	$(MAKE) perf-tests OCPP_VERSION=2.1
+
 perf-tests-ocpp16-ci:
 	$(MAKE) perf-tests-ci OCPP_VERSION=1.6
 
 perf-tests-ocpp201-ci:
 	$(MAKE) perf-tests-ci OCPP_VERSION=2.0.1
+
+perf-tests-ocpp21-ci:
+	$(MAKE) perf-tests-ci OCPP_VERSION=2.1

@@ -152,6 +152,52 @@ jobs:
           ' ${{ github.workspace }}/example/2.0.1/results/summary_201.json >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
+      - name: Run OCPP 2.1 performance tests
+        id: ocpp21-perf-test
+        run: |
+          make perf-tests-ocpp21-ci
+          echo "SUMMARY_21<<EOF" >> "$GITHUB_OUTPUT"
+          jq -r '
+            "| Metric | Value |\n|--------|-------|\n" +
+            "| **Checks** | |\n" +
+            "| Passes | \(.metrics.checks.passes // 0) |\n" +
+            "| Fails | \(.metrics.checks.fails // 0) |\n" +
+            "| **Data** | |\n" +
+            "| Received (bytes) | \(.metrics.data_received.count // 0) |\n" +
+            "| Received Rate (bytes/s) | \((.metrics.data_received.rate // 0) | floor) |\n" +
+            "| Sent (bytes) | \(.metrics.data_sent.count // 0) |\n" +
+            "| Sent Rate (bytes/s) | \((.metrics.data_sent.rate // 0) | floor) |\n" +
+            "| **WebSocket** | |\n" +
+            "| Sessions | \(.metrics.ws_sessions.count // 0) |\n" +
+            "| Session Rate | \((.metrics.ws_sessions.rate // 0) | floor) |\n" +
+            "| Messages Received | \(.metrics.ws_msgs_received.count // 0) |\n" +
+            "| Messages Received Rate | \((.metrics.ws_msgs_received.rate // 0) | floor) |\n" +
+            "| Messages Sent | \(.metrics.ws_msgs_sent.count // 0) |\n" +
+            "| Messages Sent Rate | \((.metrics.ws_msgs_sent.rate // 0) | floor) |\n" +
+            "| **Session Duration (ms)** | |\n" +
+            "| Min | \((.metrics.ws_session_duration.min // 0) | floor) |\n" +
+            "| Median | \((.metrics.ws_session_duration.med // 0) | floor) |\n" +
+            "| Max | \((.metrics.ws_session_duration.max // 0) | floor) |\n" +
+            "| Average | \((.metrics.ws_session_duration.avg // 0) | floor) |\n" +
+            "| P90 | \((.metrics.ws_session_duration["p(90)"] // 0) | floor) |\n" +
+            "| P95 | \((.metrics.ws_session_duration["p(95)"] // 0) | floor) |\n" +
+            "| **Iterations** | |\n" +
+            "| Count | \(.metrics.iterations.count // 0) |\n" +
+            "| Rate | \((.metrics.iterations.rate // 0) | floor) |\n" +
+            "| **Iteration Duration (ms)** | |\n" +
+            "| Min | \((.metrics.iteration_duration.min // 0) | floor) |\n" +
+            "| Median | \((.metrics.iteration_duration.med // 0) | floor) |\n" +
+            "| Max | \((.metrics.iteration_duration.max // 0) | floor) |\n" +
+            "| Average | \((.metrics.iteration_duration.avg // 0) | floor) |\n" +
+            "| P90 | \((.metrics.iteration_duration["p(90)"] // 0) | floor) |\n" +
+            "| P95 | \((.metrics.iteration_duration["p(95)"] // 0) | floor) |\n" +
+            "| **VUs** | |\n" +
+            "| Value | \(.metrics.vus.value // 0) |\n" +
+            "| Min | \(.metrics.vus.min // 0) |\n" +
+            "| Max | \(.metrics.vus.max // 0) |\n"
+          ' ${{ github.workspace }}/example/2.1/results/summary_21.json >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Report performance test results
         uses: actions/upload-artifact@v6
         with:
@@ -172,6 +218,9 @@ jobs:
             
             ### OCPP 2.0.1
             ${{steps.ocpp201-perf-test.outputs.SUMMARY_201}}
+
+            ### OCPP 2.1
+            ${{steps.ocpp21-perf-test.outputs.SUMMARY_21}}
 
           pr-number: ${{ github.event.pull_request.number }}
           comment-tag: execution
