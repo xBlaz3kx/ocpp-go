@@ -242,10 +242,10 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, log
 		client = ws.NewClient()
 	}
 	client.SetRequestedSubProtocol(types.V2Subprotocol)
-
 	if endpoint == nil {
+		var err error
 		dispatcher := ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(0), logger)
-		endpoint = ocppj.NewClient(
+		endpoint, err = ocppj.NewClient(
 			id,
 			client,
 			dispatcher,
@@ -271,7 +271,11 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, log
 			battery_swap.Profile,
 			der.Profile,
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	endpoint.SetDialect(ocpp.V21)
 
 	cs := chargingStation{
@@ -502,7 +506,8 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server, logger logging.Logger) (C
 
 	server.AddSupportedSubprotocol(types.V2Subprotocol)
 	if endpoint == nil {
-		endpoint = ocppj.NewServer(server, nil, nil, logger,
+		var err error
+		endpoint, err = ocppj.NewServer(server, nil, nil, logger,
 			authorization.Profile,
 			availability.Profile,
 			data.Profile,
@@ -523,6 +528,9 @@ func NewCSMS(endpoint *ocppj.Server, server ws.Server, logger logging.Logger) (C
 			battery_swap.Profile,
 			der.Profile,
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	cs, err := newCSMS(endpoint)
