@@ -2,6 +2,7 @@ package ocppj
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -182,26 +183,30 @@ func (f *FIFOQueueMap) Add(clientID string, queue RequestQueue) {
 
 func (f *FIFOQueueMap) Size() int {
 	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+	data := f.data
+	f.mutex.RUnlock()
 
 	total := 0
-	for _, q := range f.data {
+	for _, q := range data {
 		total += q.Size()
 	}
+
 	return total
 }
 
 func (f *FIFOQueueMap) SizePerClient() map[string]int {
+	data := map[string]RequestQueue{}
+
 	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+	maps.Copy(data, f.data)
+	f.mutex.RUnlock()
 
 	sizes := map[string]int{}
-	for clientID, q := range f.data {
+	for clientID, q := range data {
 		sizes[clientID] = q.Size()
 	}
 
 	return sizes
-
 }
 
 // NewFIFOQueueMap creates a new FIFOQueueMap, which will automatically create queues with the specified capacity.
