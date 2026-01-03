@@ -261,37 +261,70 @@ func (d *DefaultClientDispatcher) dispatchNextRequest() {
 	// Get first element in queue
 	el := d.requestQueue.Peek()
 
-	bundle, canCast := el.(RequestBundle)
-	if !canCast {
-		d.logger.Errorf("failed to cast request queue element to RequestBundle")
-		return
-	}
-
-	if bundle.Call == nil {
-		d.logger.Errorf("request bundle has no Call associated")
-		return
-	}
-
-	if bundle.Data == nil {
-		d.logger.Errorf("request bundle has no Data associated")
-		return
-	}
-
-	jsonMessage := bundle.Data
-	d.pendingRequestState.AddPendingRequest(bundle.Call.UniqueId, bundle.Call.Payload)
-	// Attempt to send over network
-	err := d.network.Write(jsonMessage)
-	if err != nil {
-		// TODO: handle retransmission instead of skipping request altogether
-		d.CompleteRequest(bundle.Call.GetUniqueId())
-		if d.onRequestCancel != nil {
-			d.onRequestCancel(bundle.Call.UniqueId, bundle.Call.Payload,
-				ocpp.NewError(InternalError, err.Error(), bundle.Call.UniqueId))
+	switch el.(type) {
+	case EventBundle:
+		bundle, canCast := el.(EventBundle)
+		if !canCast {
+			d.logger.Errorf("failed to cast request queue element to EventBundle")
+			return
 		}
-	}
 
-	d.logger.Infof("dispatched request %s to server", bundle.Call.UniqueId)
-	d.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
+		if bundle.Send == nil {
+			d.logger.Errorf("event bundle has no Send associated")
+			return
+		}
+
+		if bundle.Data == nil {
+			d.logger.Errorf("event bundle has no Data associated")
+			return
+		}
+
+		jsonMessage := bundle.Data
+		d.pendingRequestState.AddPendingRequest(bundle.Send.UniqueId, bundle.Send.Payload)
+		// Attempt to send over network
+		err := d.network.Write(jsonMessage)
+		if err != nil {
+			// TODO: handle retransmission instead of skipping request altogether
+			d.CompleteRequest(bundle.Send.GetUniqueId())
+			if d.onRequestCancel != nil {
+				d.onRequestCancel(bundle.Send.UniqueId, bundle.Send.Payload,
+					ocpp.NewError(InternalError, err.Error(), bundle.Send.UniqueId))
+			}
+		}
+
+	case RequestBundle:
+		bundle, canCast := el.(RequestBundle)
+		if !canCast {
+			d.logger.Errorf("failed to cast request queue element to RequestBundle")
+			return
+		}
+
+		if bundle.Call == nil {
+			d.logger.Errorf("request bundle has no Call associated")
+			return
+		}
+
+		if bundle.Data == nil {
+			d.logger.Errorf("request bundle has no Data associated")
+			return
+		}
+
+		jsonMessage := bundle.Data
+		d.pendingRequestState.AddPendingRequest(bundle.Call.UniqueId, bundle.Call.Payload)
+		// Attempt to send over network
+		err := d.network.Write(jsonMessage)
+		if err != nil {
+			// TODO: handle retransmission instead of skipping request altogether
+			d.CompleteRequest(bundle.Call.GetUniqueId())
+			if d.onRequestCancel != nil {
+				d.onRequestCancel(bundle.Call.UniqueId, bundle.Call.Payload,
+					ocpp.NewError(InternalError, err.Error(), bundle.Call.UniqueId))
+			}
+		}
+
+		d.logger.Infof("dispatched request %s to server", bundle.Call.UniqueId)
+		d.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
+	}
 }
 
 func (d *DefaultClientDispatcher) Pause() {
@@ -322,14 +355,32 @@ func (d *DefaultClientDispatcher) CompleteRequest(requestId string) {
 		d.logger.Errorf("attempting to pop front of queue, but queue is empty")
 		return
 	}
-	bundle, _ := el.(RequestBundle)
-	if bundle.Call.UniqueId != requestId {
-		d.logger.Errorf("internal state mismatch: received response for %v but expected response for %v", requestId, bundle.Call.UniqueId)
-		return
+
+	switch el.(type) {
+	case RequestBundle:
+		bundle, _ := el.(RequestBundle)
+		if bundle.Call.UniqueId != requestId {
+			d.logger.Errorf("internal state mismatch: received response for %v but expected response for %v", requestId, bundle.Call.UniqueId)
+			return
+		}
+
+		d.pendingRequestState.DeletePendingRequest(requestId)
+		d.logger.Debugf("removed request %v from front of queue", bundle.Call.UniqueId)
+
+	case EventBundle:
+		bundle, _ := el.(EventBundle)
+		if bundle.Send.UniqueId != requestId {
+			d.logger.Errorf("internal state mismatch: received response for %v but expected response for %v", requestId, bundle.Send.UniqueId)
+			return
+		}
+
+		d.pendingRequestState.DeletePendingRequest(requestId)
+		d.logger.Debugf("removed event %v from front of queue", bundle.Send.UniqueId)
 	}
+
+	// If the request is none of the above types, we still pop it to avoid blocking the queue
 	d.requestQueue.Pop()
-	d.pendingRequestState.DeletePendingRequest(requestId)
-	d.logger.Debugf("removed request %v from front of queue", bundle.Call.UniqueId)
+
 	// Signal that next message in queue may be sent
 	d.readyForDispatch <- true
 }

@@ -351,6 +351,7 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 			if s.errorHandler != nil {
 				s.errorHandler(wsChannel, ocpp.NewError(callResultError.ErrorCode, callResultError.ErrorDescription, callResultError.UniqueId), callResultError.ErrorDetails)
 			}
+
 			// todo metrics
 		case SEND:
 			send := message.(*Send)
@@ -358,7 +359,8 @@ func (s *Server) ocppMessageHandler(wsChannel ws.Channel, data []byte) error {
 			if s.requestHandler != nil {
 				s.requestHandler(wsChannel, send.Payload, send.UniqueId, send.Action)
 			}
-			// todo metrics
+
+			s.metrics.IncrementInboundRequests(metricCtx, wsChannel.ID(), send.Payload.GetFeatureName(), nil)
 		}
 	}
 	return nil

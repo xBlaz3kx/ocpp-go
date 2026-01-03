@@ -635,7 +635,6 @@ func (suite *OcppJTestSuite) TestParallelRequests() {
 // Requests are sent concurrently and a response to each message is sent from the mocked client endpoint.
 // Both CallResult and CallError messages are returned to test all message types.
 func (suite *OcppJTestSuite) TestServerRequestFlow() {
-	t := suite.T()
 	var mutex sync.Mutex
 	messagesToQueue := 10
 	processedMessages := 0
@@ -655,7 +654,7 @@ func (suite *OcppJTestSuite) TestServerRequestFlow() {
 		wsID := args.String(0)
 		data := args.Get(1).([]byte)
 		state := suite.centralSystem.RequestState.GetClientState(wsID)
-		call := ParseCall(&suite.centralSystem.Endpoint, state, string(data), t)
+		call := ParseCall(suite, &suite.centralSystem.Endpoint, state, string(data))
 		suite.Require().NotNil(call)
 		sendResponseTrigger <- triggerData{clientID: wsID, call: call}
 	}).Return(nil)

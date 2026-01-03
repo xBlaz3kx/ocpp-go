@@ -515,7 +515,6 @@ func (suite *OcppJTestSuite) TestClientParallelRequests() {
 // Requests are sent concurrently and a response to each message is sent from the mocked server endpoint.
 // Both CallResult and CallError messages are returned to test all message types.
 func (suite *OcppJTestSuite) TestClientRequestFlow() {
-	t := suite.T()
 	var mutex sync.Mutex
 	messagesToQueue := 10
 	processedMessages := 0
@@ -523,7 +522,7 @@ func (suite *OcppJTestSuite) TestClientRequestFlow() {
 	suite.mockClient.On("Start", mock.AnythingOfType("string")).Return(nil)
 	suite.mockClient.On("Write", mock.Anything).Run(func(args mock.Arguments) {
 		data := args.Get(0).([]byte)
-		call := ParseCall(&suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data), t)
+		call := ParseCall(suite, &suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data))
 		suite.Require().NotNil(call)
 		sendResponseTrigger <- call
 	}).Return(nil)
@@ -596,7 +595,6 @@ func (suite *OcppJTestSuite) TestClientRequestFlow() {
 // TestClientDisconnected ensures that upon disconnection, the client keeps its internal state
 // and the internal queue does not change.
 func (suite *OcppJTestSuite) TestClientDisconnected() {
-	t := suite.T()
 	messagesToQueue := 8
 	sentMessages := 0
 	writeC := make(chan *ocppj.Call, 1)
@@ -606,7 +604,7 @@ func (suite *OcppJTestSuite) TestClientDisconnected() {
 	suite.mockClient.On("Write", mock.Anything).Run(func(args mock.Arguments) {
 		sentMessages += 1
 		data := args.Get(0).([]byte)
-		call := ParseCall(&suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data), t)
+		call := ParseCall(suite, &suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data))
 		suite.Require().NotNil(call)
 		writeC <- call
 	}).Return(nil)
@@ -659,7 +657,6 @@ func (suite *OcppJTestSuite) TestClientDisconnected() {
 // TestClientReconnected ensures that upon reconnection, the client retains its internal state
 // and resumes sending requests.
 func (suite *OcppJTestSuite) TestClientReconnected() {
-	t := suite.T()
 	messagesToQueue := 8
 	sentMessages := 0
 	writeC := make(chan *ocppj.Call, 1)
@@ -669,7 +666,7 @@ func (suite *OcppJTestSuite) TestClientReconnected() {
 	suite.mockClient.On("Write", mock.Anything).Run(func(args mock.Arguments) {
 		sentMessages += 1
 		data := args.Get(0).([]byte)
-		call := ParseCall(&suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data), t)
+		call := ParseCall(suite, &suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data))
 		suite.Require().NotNil(call)
 		writeC <- call
 	}).Return(nil)
@@ -735,14 +732,13 @@ func (suite *OcppJTestSuite) TestClientReconnected() {
 //   - cancels the current pending request
 //   - fires an error, which is returned to the caller
 func (suite *OcppJTestSuite) TestClientResponseTimeout() {
-	t := suite.T()
 	requestID := ""
 	req := newMockRequest("test")
 	timeoutC := make(chan bool, 1)
 	suite.mockClient.On("Start", mock.AnythingOfType("string")).Return(nil)
 	suite.mockClient.On("Write", mock.Anything).Run(func(args mock.Arguments) {
 		data := args.Get(0).([]byte)
-		call := ParseCall(&suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data), t)
+		call := ParseCall(suite, &suite.chargePoint.Endpoint, suite.chargePoint.RequestState, string(data))
 		suite.Require().NotNil(call)
 		requestID = call.UniqueId
 	}).Return(nil)

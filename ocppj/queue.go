@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-// RequestBundle is a convenience struct for passing a call object struct and the
+// RequestBundle is a convenience struct for passing a CALL object struct and the
 // raw byte data into the queue containing outgoing requests.
 type RequestBundle struct {
 	Call *Call
 	Data []byte
 }
 
-// EventBundle is a convenience struct for passing a send object struct and the
+// EventBundle is a convenience struct for passing a SEND object struct and the
 // raw byte data into the queue containing outgoing requests.
 type EventBundle struct {
 	Send *Send

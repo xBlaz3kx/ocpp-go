@@ -29,9 +29,10 @@ func SetHTMLEscape(flag bool) {
 type MessageType int
 
 const (
-	CALL              MessageType = 2
-	CALL_RESULT       MessageType = 3
-	CALL_ERROR        MessageType = 4
+	CALL        MessageType = 2
+	CALL_RESULT MessageType = 3
+	CALL_ERROR  MessageType = 4
+	// New calls in OCPP 2.1
 	CALL_RESULT_ERROR MessageType = 5
 	SEND              MessageType = 6
 )
@@ -212,11 +213,12 @@ func (call *Send) MarshalJSON() ([]byte, error) {
 }
 
 const (
-	NotImplemented                   ocpp.ErrorCode = "NotImplemented"                // Requested Action is not known by receiver.
-	NotSupported                     ocpp.ErrorCode = "NotSupported"                  // Requested Action is recognized but not supported by the receiver.
-	InternalError                    ocpp.ErrorCode = "InternalError"                 // An internal error occurred and the receiver was not able to process the requested Action successfully.
-	MessageTypeNotSupported          ocpp.ErrorCode = "MessageTypeNotSupported"       // A message with a Message Type Number received that is not supported by this implementation.
-	ProtocolError                    ocpp.ErrorCode = "ProtocolError"                 // Payload for Action is incomplete.
+	NotImplemented          ocpp.ErrorCode = "NotImplemented"          // Requested Action is not known by receiver.
+	NotSupported            ocpp.ErrorCode = "NotSupported"            // Requested Action is recognized but not supported by the receiver.
+	InternalError           ocpp.ErrorCode = "InternalError"           // An internal error occurred and the receiver was not able to process the requested Action successfully.
+	MessageTypeNotSupported ocpp.ErrorCode = "MessageTypeNotSupported" // A message with a Message Type Number received that is not supported by this implementation.
+	ProtocolError           ocpp.ErrorCode = "ProtocolError"           // Payload for Action is incomplete.
+	// RpcFrameworkError is specific for OCPP 2.1
 	RpcFrameworkError                ocpp.ErrorCode = "RpcFrameworkError"             // Content of the call is not a valid RPC Request, for example: MessageId could not be read.
 	SecurityError                    ocpp.ErrorCode = "SecurityError"                 // During the processing of Action a security issue occurred preventing receiver from completing the Action successfully.
 	PropertyConstraintViolation      ocpp.ErrorCode = "PropertyConstraintViolation"   // Payload is syntactically correct but at least one field contains an invalid value.
@@ -488,7 +490,7 @@ func (endpoint *Endpoint) ParseMessage(arr []interface{}, pendingRequestState Cl
 		}
 		return &callError, nil
 	case CALL_RESULT_ERROR:
-		// Onl
+		// Only valid in OCPP 2.1
 		if endpoint.Dialect() != ocpp.V21 {
 			return nil, ocpp.NewError(MessageTypeNotSupported, "CALL_RESULT_ERROR message is not supported in this OCPP version", uniqueId)
 		}
@@ -618,6 +620,10 @@ func (endpoint *Endpoint) CreateSend(request ocpp.Request) (*Send, error) {
 
 // Creates a CallResultError message, given the message's unique ID and the error.
 func (endpoint *Endpoint) CreateCallResultError(uniqueId string, code ocpp.ErrorCode, description string, details interface{}) (*CallResultError, error) {
+	if endpoint.dialect != ocpp.V21 {
+		return nil, fmt.Errorf("CallResultError messages are only supported in OCPP 2.1")
+	}
+
 	callError := CallResultError{
 		MessageTypeId:    CALL_RESULT_ERROR,
 		UniqueId:         uniqueId,
