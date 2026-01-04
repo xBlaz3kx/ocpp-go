@@ -53,8 +53,10 @@ jobs:
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
+
       # Run `github-action-benchmark` action
       - name: Store benchmark result
+        id: bench
         uses: benchmark-action/github-action-benchmark@v1
         with:
           # What benchmark tool the output.txt came from
@@ -73,3 +75,11 @@ jobs:
           comment-on-alert: true
           # Enable Job Summary for PRs
           summary-always: true
+
+      - name: Store benchmark
+        # Only push when on main branch
+        if: github.action == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
