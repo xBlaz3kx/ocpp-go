@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	ut "github.com/go-playground/universal-translator"
-	"go.opentelemetry.io/otel/metric/noop"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -376,7 +374,7 @@ func (suite *OcppJTestSuite) SetupTest() {
 	suite.chargePoint, err = ocppj.NewClient("mock_id", suite.mockClient, suite.clientDispatcher, nil, nil, mockProfile)
 	suite.Assert().NoError(err)
 	suite.serverRequestMap = ocppj.NewFIFOQueueMap(queueCapacity)
-	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap, noop.NewMeterProvider(), nil)
+	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(suite.serverRequestMap)
 	suite.centralSystem, err = ocppj.NewServer(suite.mockServer, suite.serverDispatcher, nil, nil, mockProfile)
 	suite.Assert().NoError(err)
 	defaultDialect := ocpp.V16 // set default to version 1.6 format error *for test only

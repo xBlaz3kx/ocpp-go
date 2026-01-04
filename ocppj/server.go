@@ -65,7 +65,11 @@ func NewServer(
 
 	// Create default dispatcher and state handler if not provided
 	if dispatcher == nil {
-		dispatcher = NewDefaultServerDispatcher(NewFIFOQueueMap(0), meterProvider, logger)
+		dispatcher = NewDefaultServerDispatcher(
+			NewFIFOQueueMap(0),
+			WithMeterProvider(meterProvider),
+			WithLogger(logger),
+		)
 	}
 
 	if stateHandler == nil {
