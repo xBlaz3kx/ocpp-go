@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/xBlaz3kx/ocpp-go/internal/callbackqueue"
+	"github.com/xBlaz3kx/ocpp-go/internal/callback"
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/authorization"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/availability"
@@ -44,9 +44,9 @@ type chargingStation struct {
 	diagnosticsHandler   diagnostics.ChargingStationHandler
 	displayHandler       display.ChargingStationHandler
 	dataHandler          data.ChargingStationHandler
-	responseHandler      chan ocpp.Response
-	errorHandler         chan error
-	callbacks            callbackqueue.CallbackQueue
+	responseChan         chan ocpp.Response
+	errorChan            chan error
+	callbacks            *callback.Registry
 	stopC                chan struct{}
 	errC                 chan error // external error channel
 }
@@ -68,7 +68,7 @@ func (cs *chargingStation) Errors() <-chan error {
 // Callback invoked whenever a queued request is canceled, due to timeout.
 // By default, the callback returns a GenericError to the caller, who sent the original request.
 func (cs *chargingStation) onRequestTimeout(_ string, _ ocpp.Request, err *ocpp.Error) {
-	cs.errorHandler <- err
+	cs.errorChan <- err
 }
 
 func (cs *chargingStation) BootNotification(reason provisioning.BootReason, model string, vendor string, props ...func(request *provisioning.BootNotificationRequest)) (*provisioning.BootNotificationResponse, error) {
@@ -473,20 +473,26 @@ func (cs *chargingStation) SendRequest(request ocpp.Request) (ocpp.Response, err
 	}
 	// Create channel and pass it to a callback function, for retrieving asynchronous response
 	asyncResponseC := make(chan asyncResponse, 1)
-	send := func() error {
+	send := func() (string, error) {
 		return cs.client.SendRequest(request)
 	}
-	err := cs.callbacks.TryQueue("main", send, func(confirmation ocpp.Response, err error) {
+	err := cs.callbacks.RegisterCallback("main", send, func(confirmation ocpp.Response, err error) {
 		asyncResponseC <- asyncResponse{r: confirmation, e: err}
 	})
 	if err != nil {
 		return nil, err
 	}
-	asyncResult, ok := <-asyncResponseC
-	if !ok {
-		return nil, fmt.Errorf("internal error while receiving result for %v request", request.GetFeatureName())
+
+	// Wait for response or client stop
+	select {
+	case asyncResult, ok := <-asyncResponseC:
+		if !ok {
+			return nil, fmt.Errorf("internal error while receiving result for %v request", request.GetFeatureName())
+		}
+		return asyncResult.r, asyncResult.e
+	case <-cs.stopC:
+		return nil, fmt.Errorf("client stopped while waiting for response to %v", request.GetFeatureName())
 	}
-	return asyncResult.r, asyncResult.e
 }
 
 func (cs *chargingStation) SendRequestAsync(request ocpp.Request, callback func(response ocpp.Response, err error)) error {
@@ -525,27 +531,30 @@ func (cs *chargingStation) SendRequestAsync(request ocpp.Request, callback func(
 		return fmt.Errorf("unsupported action %v on charging station, cannot send request", featureName)
 	}
 	// Response will be retrieved asynchronously via asyncHandler
-	send := func() error {
+	send := func() (string, error) {
 		return cs.client.SendRequest(request)
 	}
-	err := cs.callbacks.TryQueue("main", send, callback)
+	err := cs.callbacks.RegisterCallback("main", send, callback)
 	return err
 }
 
 func (cs *chargingStation) asyncCallbackHandler() {
 	for {
 		select {
-		case confirmation := <-cs.responseHandler:
+		case confirmation := <-cs.responseChan:
+
+			cb, ok := cs.callbacks.GetCallback("main", "")
 			// Get and invoke callback
-			if callback, ok := cs.callbacks.Dequeue("main"); ok {
-				callback(confirmation, nil)
+			if ok {
+				cb(confirmation, nil)
 			} else {
 				cs.error(fmt.Errorf("no callback available for incoming response %v", confirmation.GetFeatureName()))
 			}
-		case protoError := <-cs.errorHandler:
+		case protoError := <-cs.errorChan:
 			// Get and invoke callback
-			if callback, ok := cs.callbacks.Dequeue("main"); ok {
-				callback(nil, protoError)
+			cb, ok := cs.callbacks.GetCallback("main", "")
+			if ok {
+				cb(nil, protoError)
 			} else {
 				cs.error(fmt.Errorf("no callback available for incoming error %w", protoError))
 			}
@@ -639,78 +648,78 @@ func (cs *chargingStation) handleIncomingRequest(request ocpp.Request, requestId
 	if !found {
 		cs.notImplementedError(requestId, action)
 		return
-	} else {
-		supported := true
-		switch profile.Name {
-		case authorization.ProfileName:
-			if cs.authorizationHandler == nil {
-				supported = false
-			}
-		case availability.ProfileName:
-			if cs.availabilityHandler == nil {
-				supported = false
-			}
-		case data.ProfileName:
-			if cs.dataHandler == nil {
-				supported = false
-			}
-		case diagnostics.ProfileName:
-			if cs.diagnosticsHandler == nil {
-				supported = false
-			}
-		case display.ProfileName:
-			if cs.displayHandler == nil {
-				supported = false
-			}
-		case firmware.ProfileName:
-			if cs.firmwareHandler == nil {
-				supported = false
-			}
-		case iso15118.ProfileName:
-			if cs.iso15118Handler == nil {
-				supported = false
-			}
-		case localauth.ProfileName:
-			if cs.localAuthListHandler == nil {
-				supported = false
-			}
-		case meter.ProfileName:
-			if cs.meterHandler == nil {
-				supported = false
-			}
-		case provisioning.ProfileName:
-			if cs.provisioningHandler == nil {
-				supported = false
-			}
-		case remotecontrol.ProfileName:
-			if cs.remoteControlHandler == nil {
-				supported = false
-			}
-		case reservation.ProfileName:
-			if cs.reservationHandler == nil {
-				supported = false
-			}
-		case security.ProfileName:
-			if cs.securityHandler == nil {
-				supported = false
-			}
-		case smartcharging.ProfileName:
-			if cs.smartChargingHandler == nil {
-				supported = false
-			}
-		case tariffcost.ProfileName:
-			if cs.tariffCostHandler == nil {
-				supported = false
-			}
-		case transactions.ProfileName:
-			if cs.transactionsHandler == nil {
-				supported = false
-			}
+	}
+
+	supported := true
+	switch profile.Name {
+	case authorization.ProfileName:
+		if cs.authorizationHandler == nil {
+			supported = false
 		}
-		if !supported {
-			cs.notSupportedError(requestId, action)
-			return
+	case availability.ProfileName:
+		if cs.availabilityHandler == nil {
+			supported = false
 		}
+	case data.ProfileName:
+		if cs.dataHandler == nil {
+			supported = false
+		}
+	case diagnostics.ProfileName:
+		if cs.diagnosticsHandler == nil {
+			supported = false
+		}
+	case display.ProfileName:
+		if cs.displayHandler == nil {
+			supported = false
+		}
+	case firmware.ProfileName:
+		if cs.firmwareHandler == nil {
+			supported = false
+		}
+	case iso15118.ProfileName:
+		if cs.iso15118Handler == nil {
+			supported = false
+		}
+	case localauth.ProfileName:
+		if cs.localAuthListHandler == nil {
+			supported = false
+		}
+	case meter.ProfileName:
+		if cs.meterHandler == nil {
+			supported = false
+		}
+	case provisioning.ProfileName:
+		if cs.provisioningHandler == nil {
+			supported = false
+		}
+	case remotecontrol.ProfileName:
+		if cs.remoteControlHandler == nil {
+			supported = false
+		}
+	case reservation.ProfileName:
+		if cs.reservationHandler == nil {
+			supported = false
+		}
+	case security.ProfileName:
+		if cs.securityHandler == nil {
+			supported = false
+		}
+	case smartcharging.ProfileName:
+		if cs.smartChargingHandler == nil {
+			supported = false
+		}
+	case tariffcost.ProfileName:
+		if cs.tariffCostHandler == nil {
+			supported = false
+		}
+	case transactions.ProfileName:
+		if cs.transactionsHandler == nil {
+			supported = false
+		}
+	}
+	if !supported {
+		cs.notSupportedError(requestId, action)
+		return
 	}
 	// Process request
 	var response ocpp.Response
@@ -800,5 +809,6 @@ func (cs *chargingStation) handleIncomingRequest(request ocpp.Request, requestId
 		cs.notSupportedError(requestId, action)
 		return
 	}
+
 	cs.sendResponse(response, err, requestId)
 }

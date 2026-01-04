@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/xBlaz3kx/ocpp-go/internal/callbackqueue"
+	"github.com/xBlaz3kx/ocpp-go/internal/callback"
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/certificates"
 	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/core"
@@ -36,7 +36,7 @@ type chargePoint struct {
 	certificateHandler            certificates.ChargePointHandler
 	confirmationHandler           chan ocpp.Response
 	errorHandler                  chan error
-	callbacks                     callbackqueue.CallbackQueue
+	callbacks                     *callback.Registry
 	stopC                         chan struct{}
 	errC                          chan error // external error channel
 }
@@ -296,15 +296,18 @@ func (cp *chargePoint) SendRequest(request ocpp.Request) (ocpp.Response, error) 
 	}
 	// Create channel and pass it to a callback function, for retrieving asynchronous response
 	asyncResponseC := make(chan asyncResponse, 1)
-	send := func() error {
+
+	send := func() (string, error) {
 		return cp.client.SendRequest(request)
 	}
-	err := cp.callbacks.TryQueue("main", send, func(confirmation ocpp.Response, err error) {
+	err := cp.callbacks.RegisterCallback("main", send, func(confirmation ocpp.Response, err error) {
 		asyncResponseC <- asyncResponse{r: confirmation, e: err}
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	// Wait for response or client stop
 	select {
 	case asyncResult, ok := <-asyncResponseC:
 		if !ok {
@@ -331,11 +334,12 @@ func (cp *chargePoint) SendRequestAsync(request ocpp.Request, callback func(conf
 	default:
 		return fmt.Errorf("unsupported action %v on charge point, cannot send request", featureName)
 	}
+
 	// Response will be retrieved asynchronously via asyncHandler
-	send := func() error {
+	send := func() (string, error) {
 		return cp.client.SendRequest(request)
 	}
-	err := cp.callbacks.TryQueue("main", send, callback)
+	err := cp.callbacks.RegisterCallback("main", send, callback)
 	return err
 }
 
@@ -344,20 +348,23 @@ func (cp *chargePoint) asyncCallbackHandler() {
 		select {
 		case confirmation := <-cp.confirmationHandler:
 			// Get and invoke callback
-			if callback, ok := cp.callbacks.Dequeue("main"); ok {
-				callback(confirmation, nil)
-			} else {
-				err := fmt.Errorf("no handler available for incoming response %v", confirmation.GetFeatureName())
-				cp.error(err)
+			cb, ok := cp.callbacks.GetCallback("main", "")
+			if ok {
+				cb(confirmation, nil)
+				continue
 			}
+
+			err := fmt.Errorf("no handler available for incoming response %v", confirmation.GetFeatureName())
+			cp.error(err)
 		case protoError := <-cp.errorHandler:
+			cb, ok := cp.callbacks.GetCallback("main", "")
 			// Get and invoke callback
-			if callback, ok := cp.callbacks.Dequeue("main"); ok {
-				callback(nil, protoError)
-			} else {
-				err := fmt.Errorf("no handler available for error %v", protoError.Error())
-				cp.error(err)
+			if ok {
+				cb(nil, protoError)
+				continue
 			}
+			err := fmt.Errorf("no handler available for error %v", protoError.Error())
+			cp.error(err)
 		case <-cp.stopC:
 			// Handler stopped, cleanup callbacks.
 			// No callback invocation, since the user manually stopped the client.
@@ -368,9 +375,14 @@ func (cp *chargePoint) asyncCallbackHandler() {
 }
 
 func (cp *chargePoint) clearCallbacks(invokeCallback bool) {
-	for cb, ok := cp.callbacks.Dequeue("main"); ok; cb, ok = cp.callbacks.Dequeue("main") {
+	cb, ok := cp.callbacks.GetAllCallbacks("main")
+	if !ok {
+		return
+	}
+
+	for reqId, cb := range cb {
 		if invokeCallback {
-			err := ocpp.NewError(ocppj.GenericError, "client stopped, no response received from server", "")
+			err := ocpp.NewError(ocppj.GenericError, "client stopped, no response received from server", string(reqId))
 			cb(nil, err)
 		}
 	}

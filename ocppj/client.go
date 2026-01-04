@@ -229,25 +229,29 @@ func (c *Client) IsConnected() bool {
 // - the endpoint doesn't support the feature
 //
 // - the output queue is full
-func (c *Client) SendRequest(request ocpp.Request) error {
+func (c *Client) SendRequest(request ocpp.Request) (string, error) {
 	if !c.dispatcher.IsRunning() {
-		return fmt.Errorf("ocppj client is not started, couldn't send request")
+		return "", fmt.Errorf("ocppj client is not started, couldn't send request")
 	}
+
 	call, err := c.CreateCall(request)
 	if err != nil {
-		return err
+		return "", err
 	}
+
 	jsonMessage, err := call.MarshalJSON()
 	if err != nil {
-		return err
+		return "", err
 	}
+
 	// Message will be processed by dispatcher. A dedicated mechanism allows to delegate the message queue handling.
 	if err = c.dispatcher.SendRequest(RequestBundle{Call: call, Data: jsonMessage}); err != nil {
 		c.logger.Errorf("error dispatching request [%s, %s]: %v", call.UniqueId, call.Action, err)
-		return err
+		return "", err
 	}
+
 	c.logger.Debugf("enqueued CALL [%s, %s]", call.UniqueId, call.Action)
-	return nil
+	return call.GetUniqueId(), nil
 }
 
 // Sends an OCPP Response to the server.
@@ -265,14 +269,17 @@ func (c *Client) SendResponse(requestId string, response ocpp.Response) error {
 	if err != nil {
 		return err
 	}
+
 	jsonMessage, err := callResult.MarshalJSON()
 	if err != nil {
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
+
 	if err = c.client.Write(jsonMessage); err != nil {
 		c.logger.Errorf("error sending response [%s]: %v", callResult.GetUniqueId(), err)
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
+
 	c.logger.Debugf("sent CALL RESULT [%s]", callResult.GetUniqueId())
 	c.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
 	return nil
@@ -291,14 +298,17 @@ func (c *Client) SendError(requestId string, errorCode ocpp.ErrorCode, descripti
 	if err != nil {
 		return err
 	}
+
 	jsonMessage, err := callError.MarshalJSON()
 	if err != nil {
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
+
 	if err = c.client.Write(jsonMessage); err != nil {
 		c.logger.Errorf("error sending response error [%s]: %v", callError.UniqueId, err)
 		return ocpp.NewError(GenericError, err.Error(), requestId)
 	}
+
 	c.logger.Debugf("sent CALL ERROR [%s]", callError.UniqueId)
 	c.logger.Debugf("sent JSON message to server: %s", string(jsonMessage))
 	return nil

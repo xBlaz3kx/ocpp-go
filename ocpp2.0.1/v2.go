@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/xBlaz3kx/ocpp-go/internal/callbackqueue"
+	"github.com/xBlaz3kx/ocpp-go/internal/callback"
 	"github.com/xBlaz3kx/ocpp-go/logging"
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/authorization"
@@ -243,20 +243,20 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, log
 	endpoint.SetDialect(ocpp.V2)
 
 	cs := chargingStation{
-		client:          endpoint,
-		responseHandler: make(chan ocpp.Response, 1),
-		errorHandler:    make(chan error, 1),
-		callbacks:       callbackqueue.New(),
+		client:       endpoint,
+		responseChan: make(chan ocpp.Response, 1),
+		errorChan:    make(chan error, 1),
+		callbacks:    callback.New(),
 	}
 
 	// Callback invoked by dispatcher, whenever a queued request is canceled, due to timeout.
 	endpoint.SetOnRequestCanceled(cs.onRequestTimeout)
 
 	cs.client.SetResponseHandler(func(confirmation ocpp.Response, requestId string) {
-		cs.responseHandler <- confirmation
+		cs.responseChan <- confirmation
 	})
 	cs.client.SetErrorHandler(func(err *ocpp.Error, details interface{}) {
-		cs.errorHandler <- err
+		cs.errorChan <- err
 	})
 	cs.client.SetRequestHandler(cs.handleIncomingRequest)
 
