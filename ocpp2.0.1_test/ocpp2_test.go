@@ -11,8 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/metric/noop"
-
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/authorization"
@@ -1103,7 +1101,7 @@ func (suite *OcppV2TestSuite) SetupTest() {
 	suite.mockWsClient = &mockClient
 	suite.mockWsServer = &mockServer
 	suite.clientDispatcher = ocppj.NewDefaultClientDispatcher(ocppj.NewFIFOClientQueue(queueCapacity), nil)
-	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity), noop.NewMeterProvider(), nil)
+	suite.serverDispatcher = ocppj.NewDefaultServerDispatcher(ocppj.NewFIFOQueueMap(queueCapacity))
 	suite.ocppjClient, err = ocppj.NewClient("test_id", suite.mockWsClient, suite.clientDispatcher, nil, nil, securityProfile, provisioningProfile, authProfile, availabilityProfile, reservationProfile, diagnosticsProfile, dataProfile, displayProfile, firmwareProfile, isoProfile, localAuthProfile, meterProfile, remoteProfile, smartChargingProfile, tariffProfile, transactionsProfile)
 	suite.Require().NoError(err)
 	suite.ocppjServer, err = ocppj.NewServer(suite.mockWsServer, suite.serverDispatcher, nil, nil, securityProfile, provisioningProfile, authProfile, availabilityProfile, reservationProfile, diagnosticsProfile, dataProfile, displayProfile, firmwareProfile, isoProfile, localAuthProfile, meterProfile, remoteProfile, smartChargingProfile, tariffProfile, transactionsProfile)

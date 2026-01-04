@@ -7,8 +7,6 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/metric/noop"
-
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
@@ -28,7 +26,7 @@ func (s *ServerDispatcherTestSuite) SetupTest() {
 	mockProfile := ocpp.NewProfile("mock", &MockFeature{})
 	s.endpoint.AddProfile(mockProfile)
 	s.queueMap = ocppj.NewFIFOQueueMap(10)
-	s.dispatcher = ocppj.NewDefaultServerDispatcher(s.queueMap, noop.NewMeterProvider(), nil)
+	s.dispatcher = ocppj.NewDefaultServerDispatcher(s.queueMap)
 	s.state = ocppj.NewServerState(&s.mutex)
 	s.dispatcher.SetPendingRequestState(s.state)
 	s.websocketServer = MockWebsocketServer{}

@@ -36,7 +36,6 @@ type ChargingStationConnection interface {
 }
 
 type (
-	ChargingStationValidationHandler ws.CheckClientHandler
 	ChargingStationConnectionHandler func(chargePoint ChargingStationConnection)
 )
 

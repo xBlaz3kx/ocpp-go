@@ -11,6 +11,20 @@ import (
 	"github.com/xBlaz3kx/ocpp-go/ws"
 )
 
+type ClientDisconnectHandler func(err error)
+
+type ClientReconnectHandler func()
+
+type ClientInvalidMessageHook func(err *ocpp.Error, rawMessage string, parsedFields []interface{}) *ocpp.Error
+
+type ClientRequestCanceledHandler func(requestId string, request ocpp.Request, err *ocpp.Error)
+
+type ClientRequestHandler func(request ocpp.Request, requestId string, action string)
+
+type ClientResponseHandler func(response ocpp.Response, requestId string)
+
+type ClientErrorHandler func(err *ocpp.Error, details interface{})
+
 // The endpoint initiating the connection to an OCPP server, in an OCPP-J topology.
 // During message exchange, the two roles may be reversed (depending on the message direction), but a client struct remains associated to a charge point/charging station.
 type Client struct {
@@ -18,12 +32,12 @@ type Client struct {
 	logger                logging.Logger
 	client                ws.Client
 	Id                    string
-	requestHandler        func(request ocpp.Request, requestId string, action string)
-	responseHandler       func(response ocpp.Response, requestId string)
-	errorHandler          func(err *ocpp.Error, details interface{})
-	onDisconnectedHandler func(err error)
-	onReconnectedHandler  func()
-	invalidMessageHook    func(err *ocpp.Error, rawMessage string, parsedFields []interface{}) *ocpp.Error
+	requestHandler        ClientRequestHandler
+	responseHandler       ClientResponseHandler
+	errorHandler          ClientErrorHandler
+	onDisconnectedHandler ClientDisconnectHandler
+	onReconnectedHandler  ClientReconnectHandler
+	invalidMessageHook    ClientInvalidMessageHook
 	dispatcher            ClientDispatcher
 	RequestState          ClientState
 }
@@ -38,7 +52,14 @@ type Client struct {
 //
 // The wsClient parameter cannot be nil. Refer to the ws package for information on how to create and
 // customize a websocket client. If logger is nil, a VoidLogger will be used.
-func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, stateHandler ClientState, logger logging.Logger, profiles ...*ocpp.Profile) (*Client, error) {
+func NewClient(
+	id string,
+	wsClient ws.Client,
+	dispatcher ClientDispatcher,
+	stateHandler ClientState,
+	logger logging.Logger,
+	profiles ...*ocpp.Profile,
+) (*Client, error) {
 	endpoint := Endpoint{}
 	for _, profile := range profiles {
 		endpoint.AddProfile(profile)
@@ -77,32 +98,32 @@ func NewClient(id string, wsClient ws.Client, dispatcher ClientDispatcher, state
 }
 
 // Return incoming requests handler.
-func (c *Client) GetRequestHandler() func(request ocpp.Request, requestId string, action string) {
+func (c *Client) GetRequestHandler() ClientRequestHandler {
 	return c.requestHandler
 }
 
 // Registers a handler for incoming requests.
-func (c *Client) SetRequestHandler(handler func(request ocpp.Request, requestId string, action string)) {
+func (c *Client) SetRequestHandler(handler ClientRequestHandler) {
 	c.requestHandler = handler
 }
 
 // Return incoming responses handler.
-func (c *Client) GetResponseHandler() func(response ocpp.Response, requestId string) {
+func (c *Client) GetResponseHandler() ClientResponseHandler {
 	return c.responseHandler
 }
 
 // Registers a handler for incoming responses.
-func (c *Client) SetResponseHandler(handler func(response ocpp.Response, requestId string)) {
+func (c *Client) SetResponseHandler(handler ClientResponseHandler) {
 	c.responseHandler = handler
 }
 
 // Return incoming error messages handler.
-func (c *Client) GetErrorHandler() func(err *ocpp.Error, details interface{}) {
+func (c *Client) GetErrorHandler() ClientErrorHandler {
 	return c.errorHandler
 }
 
 // Registers a handler for incoming error messages.
-func (c *Client) SetErrorHandler(handler func(err *ocpp.Error, details interface{})) {
+func (c *Client) SetErrorHandler(handler ClientErrorHandler) {
 	c.errorHandler = handler
 }
 
@@ -120,20 +141,20 @@ func (c *Client) SetErrorHandler(handler func(err *ocpp.Error, details interface
 // the internal error message is sent to the client without further processing.
 //
 // Note: Failing to return from the hook will cause the client to block indefinitely.
-func (c *Client) SetInvalidMessageHook(hook func(err *ocpp.Error, rawMessage string, parsedFields []interface{}) *ocpp.Error) {
+func (c *Client) SetInvalidMessageHook(hook ClientInvalidMessageHook) {
 	c.invalidMessageHook = hook
 }
 
-func (c *Client) SetOnDisconnectedHandler(handler func(err error)) {
+func (c *Client) SetOnDisconnectedHandler(handler ClientDisconnectHandler) {
 	c.onDisconnectedHandler = handler
 }
 
-func (c *Client) SetOnReconnectedHandler(handler func()) {
+func (c *Client) SetOnReconnectedHandler(handler ClientReconnectHandler) {
 	c.onReconnectedHandler = handler
 }
 
 // Registers the handler to be called on timeout.
-func (c *Client) SetOnRequestCanceled(handler func(requestId string, request ocpp.Request, err *ocpp.Error)) {
+func (c *Client) SetOnRequestCanceled(handler ClientRequestCanceledHandler) {
 	c.dispatcher.SetOnRequestCanceled(handler)
 }
 
