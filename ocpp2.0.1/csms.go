@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/xBlaz3kx/ocpp-go/internal/callbackqueue"
+	"github.com/xBlaz3kx/ocpp-go/internal/callback"
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/authorization"
 	"github.com/xBlaz3kx/ocpp-go/ocpp2.0.1/availability"
@@ -46,7 +46,7 @@ type csms struct {
 	diagnosticsHandler   diagnostics.CSMSHandler
 	displayHandler       display.CSMSHandler
 	dataHandler          data.CSMSHandler
-	callbackQueue        callbackqueue.CallbackQueue
+	registry             *callback.Registry
 	errC                 chan error
 }
 
@@ -58,8 +58,8 @@ func newCSMS(server *ocppj.Server) (csms, error) {
 	server.SetDialect(ocpp.V2)
 
 	return csms{
-		server:        server,
-		callbackQueue: callbackqueue.New(),
+		server:   server,
+		registry: callback.New(),
 	}, nil
 }
 
@@ -752,10 +752,15 @@ func (cs *csms) SetNewChargingStationHandler(handler ChargingStationConnectionHa
 
 func (cs *csms) SetChargingStationDisconnectedHandler(handler ChargingStationConnectionHandler) {
 	cs.server.SetDisconnectedClientHandler(func(chargingStation ws.Channel) {
-		for cb, ok := cs.callbackQueue.Dequeue(chargingStation.ID()); ok; cb, ok = cs.callbackQueue.Dequeue(chargingStation.ID()) {
-			err := ocpp.NewError(ocppj.GenericError, "client disconnected, no response received from client", "")
-			cb(nil, err)
+		// On disconnect, invoke all pending callbacks with an error and clear the queue
+		callbacks, removed := cs.registry.GetAllCallbacks(chargingStation.ID())
+		if removed {
+			for reqId, cb := range callbacks {
+				err := ocpp.NewError(ocppj.GenericError, "client disconnected, no response received from client", string(reqId))
+				cb(nil, err)
+			}
 		}
+
 		handler(chargingStation)
 	})
 }
@@ -811,10 +816,10 @@ func (cs *csms) SendRequestAsync(clientId string, request ocpp.Request, callback
 		return fmt.Errorf("unsupported action %v on CSMS, cannot send request", featureName)
 	}
 
-	send := func() error {
+	send := func() (string, error) {
 		return cs.server.SendRequest(clientId, request)
 	}
-	return cs.callbackQueue.TryQueue(clientId, send, callback)
+	return cs.registry.RegisterCallback(clientId, send, callback)
 }
 
 func (cs *csms) Start(listenPort int, listenPath string) {
@@ -1022,9 +1027,10 @@ func (cs *csms) handleIncomingRequest(chargingStation ChargingStationConnection,
 }
 
 func (cs *csms) handleIncomingResponse(chargingStation ChargingStationConnection, response ocpp.Response, requestId string) {
-	if callback, ok := cs.callbackQueue.Dequeue(chargingStation.ID()); ok {
+	cb, ok := cs.registry.GetCallback(chargingStation.ID(), requestId)
+	if ok {
 		// Execute in separate goroutine, so the caller goroutine is available
-		go callback(response, nil)
+		go cb(response, nil)
 	} else {
 		err := fmt.Errorf("no handler available for call of type %v from client %s for request %s", response.GetFeatureName(), chargingStation.ID(), requestId)
 		cs.error(err)
@@ -1032,21 +1038,25 @@ func (cs *csms) handleIncomingResponse(chargingStation ChargingStationConnection
 }
 
 func (cs *csms) handleIncomingError(chargingStation ChargingStationConnection, err *ocpp.Error, details interface{}) {
-	if callback, ok := cs.callbackQueue.Dequeue(chargingStation.ID()); ok {
+	cb, ok := cs.registry.GetCallback(chargingStation.ID(), err.MessageId)
+	if ok {
 		// Execute in separate goroutine, so the caller goroutine is available
-		go callback(nil, err)
+		go cb(nil, err)
 	} else {
 		cs.error(fmt.Errorf("no handler available for call error %w from client %s", err, chargingStation.ID()))
 	}
 }
 
 func (cs *csms) handleCanceledRequest(chargePointID string, request ocpp.Request, err *ocpp.Error) {
-	if callback, ok := cs.callbackQueue.Dequeue(chargePointID); ok {
-		// Execute in separate goroutine, so the caller goroutine is available
-		go callback(nil, err)
-	} else {
-		err := fmt.Errorf("no handler available for canceled request %s for client %s: %w",
-			request.GetFeatureName(), chargePointID, err)
-		cs.error(err)
+	if err != nil {
+		cb, ok := cs.registry.GetCallback(chargePointID, err.MessageId)
+		if ok {
+			// Execute in separate goroutine, so the caller goroutine is available
+			go cb(nil, err)
+		} else {
+			err := fmt.Errorf("no handler available for canceled request %s for client %s: %w",
+				request.GetFeatureName(), chargePointID, err)
+			cs.error(err)
+		}
 	}
 }

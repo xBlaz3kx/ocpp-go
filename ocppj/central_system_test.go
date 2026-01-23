@@ -31,7 +31,7 @@ func (suite *OcppJTestSuite) TestServerNotStartedError() {
 	mockChargePointId := "1234"
 	// Start normally
 	req := newMockRequest("somevalue")
-	err := suite.centralSystem.SendRequest(mockChargePointId, req)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 	suite.Require().Error(err, "ocppj server is not started, couldn't send request")
 	suite.Assert().False(suite.serverDispatcher.IsRunning())
 }
@@ -48,7 +48,7 @@ func (suite *OcppJTestSuite) TestServerStoppedError() {
 	time.Sleep(20 * time.Millisecond)
 	suite.Assert().False(suite.serverDispatcher.IsRunning())
 	req := newMockRequest("somevalue")
-	err := suite.centralSystem.SendRequest(mockChargePointId, req)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 	suite.Assert().Error(err, "ocppj server is not started, couldn't send request")
 }
 
@@ -61,7 +61,7 @@ func (suite *OcppJTestSuite) TestCentralSystemSendRequest() {
 	suite.centralSystem.Start(8887, "/{ws}")
 	suite.serverDispatcher.CreateClient(mockChargePointId)
 	mockRequest := newMockRequest("mockValue")
-	err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
 	suite.Assert().Nil(err)
 }
 
@@ -72,7 +72,7 @@ func (suite *OcppJTestSuite) TestCentralSystemSendInvalidRequest() {
 	suite.centralSystem.Start(8887, "/{ws}")
 	suite.serverDispatcher.CreateClient(mockChargePointId)
 	mockRequest := newMockRequest("")
-	err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
 	suite.Assert().NotNil(err)
 }
 
@@ -86,7 +86,7 @@ func (suite *OcppJTestSuite) TestCentralSystemSendRequestNoValidation() {
 	// Temporarily disable message validation
 	ocppj.SetMessageValidation(false)
 	defer ocppj.SetMessageValidation(true)
-	err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
 	suite.Assert().Nil(err)
 }
 
@@ -98,7 +98,7 @@ func (suite *OcppJTestSuite) TestCentralSystemSendInvalidJsonRequest() {
 	suite.serverDispatcher.CreateClient(mockChargePointId)
 	mockRequest := newMockRequest("somevalue")
 	mockRequest.MockAny = make(chan int)
-	err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
 	suite.Require().Error(err)
 	suite.Assert().IsType(&json.UnsupportedTypeError{}, err)
 }
@@ -170,7 +170,7 @@ func (suite *OcppJTestSuite) TestServerSendInvalidCall() {
 	mockRequest := newMockRequest("somevalue")
 	// Delete existing profiles and test error
 	suite.centralSystem.Profiles = []*ocpp.Profile{}
-	err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
 	suite.Assert().Error(err, fmt.Sprintf("Couldn't create Call for unsupported action %v", mockRequest.GetFeatureName()))
 }
 
@@ -192,7 +192,7 @@ func (suite *OcppJTestSuite) TestCentralSystemSendRequestFailed() {
 	suite.centralSystem.Start(8887, "/{ws}")
 	suite.serverDispatcher.CreateClient(mockChargePointId)
 	mockRequest := newMockRequest("mockValue")
-	err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, mockRequest)
 	// TODO: currently the network error is not returned by SendRequest, but is only generated internally
 	suite.Assert().Nil(err)
 	// Assert that pending request was removed
@@ -521,7 +521,7 @@ func (suite *OcppJTestSuite) TestServerEnqueueRequest() {
 	suite.serverDispatcher.CreateClient(mockChargePointId)
 	// Simulate request
 	req := newMockRequest("somevalue")
-	err := suite.centralSystem.SendRequest(mockChargePointId, req)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 	suite.Require().Nil(err)
 	time.Sleep(500 * time.Millisecond)
 	// Message was sent, but element should still be in queue
@@ -557,7 +557,7 @@ func (suite *OcppJTestSuite) TestEnqueueMultipleRequests() {
 
 	for i := 0; i < int(messagesToQueue.Load()); i++ {
 		req := newMockRequest(fmt.Sprintf("request-%v", i))
-		err := suite.centralSystem.SendRequest(mockChargePointId, req)
+		_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 		suite.Require().Nil(err)
 	}
 	time.Sleep(500 * time.Millisecond)
@@ -593,12 +593,12 @@ func (suite *OcppJTestSuite) TestRequestQueueFull() {
 	suite.serverDispatcher.CreateClient(mockChargePointId)
 	for i := 0; i < messagesToQueue; i++ {
 		req := newMockRequest(fmt.Sprintf("request-%v", i))
-		err := suite.centralSystem.SendRequest(mockChargePointId, req)
+		_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 		suite.Require().Nil(err)
 	}
 	// Queue is now full. Trying to send an additional message should throw an error
 	req := newMockRequest("full")
-	err := suite.centralSystem.SendRequest(mockChargePointId, req)
+	_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 	suite.Require().NotNil(err)
 	suite.Assert().Equal("request queue is full, cannot push new element", err.Error())
 }
@@ -617,7 +617,7 @@ func (suite *OcppJTestSuite) TestParallelRequests() {
 	for i := 0; i < messagesToQueue; i++ {
 		go func() {
 			req := newMockRequest("someReq")
-			err := suite.centralSystem.SendRequest(mockChargePointId, req)
+			_, err := suite.centralSystem.SendRequest(mockChargePointId, req)
 			suite.Require().Nil(err)
 		}()
 	}
@@ -727,7 +727,7 @@ func (suite *OcppJTestSuite) TestServerRequestFlow() {
 		}
 		go func(j int, clientID string) {
 			req := newMockRequest(fmt.Sprintf("%v", j))
-			err := suite.centralSystem.SendRequest(clientID, req)
+			_, err := suite.centralSystem.SendRequest(clientID, req)
 			suite.Require().Nil(err)
 		}(i, chargePointTarget)
 	}

@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/xBlaz3kx/ocpp-go/internal/callbackqueue"
+	"github.com/xBlaz3kx/ocpp-go/internal/callback"
 	log "github.com/xBlaz3kx/ocpp-go/logging"
 	"github.com/xBlaz3kx/ocpp-go/ocpp"
 	"github.com/xBlaz3kx/ocpp-go/ocpp1.6/certificates"
@@ -197,16 +197,16 @@ func NewChargePoint(id string, endpoint *ocppj.Client, client ws.Client, logger 
 
 	cp := chargePoint{
 		client:              endpoint,
-		confirmationHandler: make(chan ocpp.Response, 1),
-		errorHandler:        make(chan error, 1),
-		callbacks:           callbackqueue.New(),
+		confirmationHandler: make(chan responseWithID, 1),
+		errorHandler:        make(chan *ocpp.Error, 1),
+		callbacks:           callback.New(),
 	}
 
 	// Callback invoked by dispatcher, whenever a queued request is canceled, due to timeout.
 	endpoint.SetOnRequestCanceled(cp.onRequestTimeout)
 
 	cp.client.SetResponseHandler(func(confirmation ocpp.Response, requestId string) {
-		cp.confirmationHandler <- confirmation
+		cp.confirmationHandler <- responseWithID{response: confirmation, requestID: requestId}
 	})
 	cp.client.SetErrorHandler(func(err *ocpp.Error, details interface{}) {
 		cp.errorHandler <- err
@@ -389,7 +389,7 @@ func NewCentralSystem(endpoint *ocppj.Server, server ws.Server, logger log.Logge
 		cs.handleIncomingError(client, err, details)
 	})
 	cs.server.SetCanceledRequestHandler(func(clientID string, requestID string, request ocpp.Request, err *ocpp.Error) {
-		cs.handleCanceledRequest(clientID, request, err)
+		cs.handleCanceledRequest(clientID, requestID, request, err)
 	})
 	return &cs, nil
 }

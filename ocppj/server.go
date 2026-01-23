@@ -193,9 +193,9 @@ func (s *Server) Stop() {
 // - the endpoint doesn't support the feature
 //
 // - the output queue is full
-func (s *Server) SendRequest(clientID string, request ocpp.Request) error {
+func (s *Server) SendRequest(clientID string, request ocpp.Request) (string, error) {
 	if !s.dispatcher.IsRunning() {
-		return fmt.Errorf("ocppj server is not started, couldn't send request")
+		return "", fmt.Errorf("ocppj server is not started, couldn't send request")
 	}
 
 	var metricErr *ocppMetricsError
@@ -209,24 +209,25 @@ func (s *Server) SendRequest(clientID string, request ocpp.Request) error {
 	call, err := s.CreateCall(request)
 	if err != nil {
 		metricErr = &payloadError // Could also be a val
-		return err
+		return "", err
 	}
 
 	jsonMessage, err := call.MarshalJSON()
 	if err != nil {
 		metricErr = &payloadError
-		return err
+		return "", err
 	}
 
 	// Will not send right away. Queuing message and let it be processed by dedicated requestPump routine
 	if err = s.dispatcher.SendRequest(clientID, RequestBundle{call, jsonMessage}); err != nil {
 		metricErr = &metricsNetworkError
 		s.logger.Errorf("error dispatching request [%s, %s] to %s: %v", call.UniqueId, call.Action, clientID, err)
-		return err
+		return "", err
 	}
 
 	s.logger.Debugf("enqueued CALL [%s, %s] for %s", call.UniqueId, call.Action, clientID)
-	return nil
+	// Return the call unique ID for tracking callbacks
+	return call.GetUniqueId(), nil
 }
 
 // Sends an OCPP Response to a client, identified by the clientID parameter.
