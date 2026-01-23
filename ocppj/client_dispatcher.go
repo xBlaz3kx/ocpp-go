@@ -3,7 +3,6 @@ package ocppj
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/xBlaz3kx/ocpp-go/logging"
@@ -25,7 +24,7 @@ type DefaultClientDispatcher struct {
 	mutex               sync.RWMutex
 	onRequestCancel     func(requestID string, request ocpp.Request, err *ocpp.Error)
 	timer               *time.Timer
-	paused              atomic.Bool
+	state               string
 	timeout             time.Duration
 }
 
@@ -40,12 +39,14 @@ func NewDefaultClientDispatcher(queue RequestQueue, logger logging.Logger) *Defa
 	if logger == nil {
 		logger = &logging.VoidLogger{}
 	}
+
 	return &DefaultClientDispatcher{
 		logger:              logger,
 		requestQueue:        queue,
-		requestChannel:      nil,
+		requestChannel:      make(chan bool, 1),
 		readyForDispatch:    make(chan bool, 1),
 		pendingRequestState: NewClientState(),
+		state:               "stopped",
 		timeout:             defaultMessageTimeout,
 	}
 }
@@ -60,6 +61,7 @@ func (d *DefaultClientDispatcher) SetTimeout(timeout time.Duration) {
 
 func (d *DefaultClientDispatcher) Start() {
 	d.mutex.Lock()
+	d.state = "running"
 	d.requestChannel = make(chan bool, 1)
 	d.timer = time.NewTimer(defaultTimeoutTick) // Default to 24 hours tick
 	d.mutex.Unlock()
@@ -74,7 +76,10 @@ func (d *DefaultClientDispatcher) IsRunning() bool {
 }
 
 func (d *DefaultClientDispatcher) IsPaused() bool {
-	return d.paused.Load()
+	d.mutex.Lock()
+	defer d.mutex.Lock()
+
+	return d.state == "paused"
 }
 
 func (d *DefaultClientDispatcher) Stop() {
@@ -100,12 +105,8 @@ func (d *DefaultClientDispatcher) SendRequest(req RequestBundle) error {
 	if err := d.requestQueue.Push(req); err != nil {
 		return err
 	}
-	d.mutex.RLock()
-	if d.requestChannel != nil {
-		d.requestChannel <- true
-	}
-	d.mutex.RUnlock()
 
+	d.requestChannel <- true
 	return nil
 }
 
@@ -117,10 +118,8 @@ func (d *DefaultClientDispatcher) messagePump() {
 		case _, ok := <-d.requestChannel:
 			// New request was posted
 			if !ok {
+				// Channel closed, stopping dispatcher
 				d.requestQueue.Init()
-				d.mutex.Lock()
-				d.requestChannel = nil
-				d.mutex.Unlock()
 				return
 			}
 		case _, ok := <-d.timer.C:
@@ -203,16 +202,21 @@ func (d *DefaultClientDispatcher) dispatchNextRequest() {
 func (d *DefaultClientDispatcher) Pause() {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
+	d.state = "paused"
+
 	if !d.timer.Stop() {
 		<-d.timer.C
 	}
 
 	d.timer.Reset(defaultTimeoutTick)
-	d.paused.Store(true)
+
 }
 
 func (d *DefaultClientDispatcher) Resume() {
-	d.paused.Store(false)
+	d.mutex.Lock()
+	d.state = "running"
+	d.mutex.Unlock()
+
 	if d.pendingRequestState.HasPendingRequest() {
 		// There is a pending request already. Awaiting response, before dispatching new requests.
 		d.timer.Reset(d.timeout)
@@ -228,11 +232,13 @@ func (d *DefaultClientDispatcher) CompleteRequest(requestId string) {
 		d.logger.Errorf("attempting to pop front of queue, but queue is empty")
 		return
 	}
+
 	bundle, _ := el.(RequestBundle)
 	if bundle.Call.UniqueId != requestId {
 		d.logger.Errorf("internal state mismatch: received response for %v but expected response for %v", requestId, bundle.Call.UniqueId)
 		return
 	}
+
 	d.requestQueue.Pop()
 	d.pendingRequestState.DeletePendingRequest(requestId)
 	d.logger.Debugf("removed request %v from front of queue", bundle.Call.UniqueId)
