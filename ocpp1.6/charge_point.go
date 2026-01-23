@@ -21,6 +21,12 @@ import (
 	"github.com/xBlaz3kx/ocpp-go/ocppj"
 )
 
+// responseWithID holds a response along with its associated request ID
+type responseWithID struct {
+	response  ocpp.Response
+	requestID string
+}
+
 type chargePoint struct {
 	client                        *ocppj.Client
 	coreHandler                   core.ChargePointHandler
@@ -34,8 +40,8 @@ type chargePoint struct {
 	extendedTriggerMessageHandler extendedtriggermessage.ChargePointHandler
 	secureFirmwareHandler         securefirmware.ChargePointHandler
 	certificateHandler            certificates.ChargePointHandler
-	confirmationHandler           chan ocpp.Response
-	errorHandler                  chan error
+	confirmationHandler           chan responseWithID
+	errorHandler                  chan *ocpp.Error
 	callbacks                     *callback.Registry
 	stopC                         chan struct{}
 	errC                          chan error // external error channel
@@ -50,7 +56,11 @@ func (cp *chargePoint) error(err error) {
 // Callback invoked whenever a queued request is canceled, due to timeout.
 // By default, the callback returns a GenericError to the caller, who sent the original request.
 func (cp *chargePoint) onRequestTimeout(_ string, _ ocpp.Request, err *ocpp.Error) {
-	cp.errorHandler <- err
+	select {
+	case cp.errorHandler <- err:
+	case <-cp.stopC:
+		return
+	}
 }
 
 // Errors returns a channel for error messages. If it doesn't exist it es created.
@@ -69,9 +79,9 @@ func (cp *chargePoint) BootNotification(chargePointModel string, chargePointVend
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.BootNotificationConfirmation), err
 	}
+
+	return confirmation.(*core.BootNotificationConfirmation), err
 }
 
 func (cp *chargePoint) Authorize(idTag string, props ...func(request *core.AuthorizeRequest)) (*core.AuthorizeConfirmation, error) {
@@ -82,9 +92,9 @@ func (cp *chargePoint) Authorize(idTag string, props ...func(request *core.Autho
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.AuthorizeConfirmation), err
 	}
+
+	return confirmation.(*core.AuthorizeConfirmation), err
 }
 
 func (cp *chargePoint) DataTransfer(vendorId string, props ...func(request *core.DataTransferRequest)) (*core.DataTransferConfirmation, error) {
@@ -95,9 +105,9 @@ func (cp *chargePoint) DataTransfer(vendorId string, props ...func(request *core
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.DataTransferConfirmation), err
 	}
+
+	return confirmation.(*core.DataTransferConfirmation), err
 }
 
 func (cp *chargePoint) Heartbeat(props ...func(request *core.HeartbeatRequest)) (*core.HeartbeatConfirmation, error) {
@@ -108,9 +118,9 @@ func (cp *chargePoint) Heartbeat(props ...func(request *core.HeartbeatRequest)) 
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.HeartbeatConfirmation), err
 	}
+
+	return confirmation.(*core.HeartbeatConfirmation), err
 }
 
 func (cp *chargePoint) MeterValues(connectorId int, meterValues []types.MeterValue, props ...func(request *core.MeterValuesRequest)) (*core.MeterValuesConfirmation, error) {
@@ -121,9 +131,9 @@ func (cp *chargePoint) MeterValues(connectorId int, meterValues []types.MeterVal
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.MeterValuesConfirmation), err
 	}
+
+	return confirmation.(*core.MeterValuesConfirmation), err
 }
 
 func (cp *chargePoint) StartTransaction(connectorId int, idTag string, meterStart int, timestamp *types.DateTime, props ...func(request *core.StartTransactionRequest)) (*core.StartTransactionConfirmation, error) {
@@ -134,9 +144,9 @@ func (cp *chargePoint) StartTransaction(connectorId int, idTag string, meterStar
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.StartTransactionConfirmation), err
 	}
+
+	return confirmation.(*core.StartTransactionConfirmation), err
 }
 
 func (cp *chargePoint) StopTransaction(meterStop int, timestamp *types.DateTime, transactionId int, props ...func(request *core.StopTransactionRequest)) (*core.StopTransactionConfirmation, error) {
@@ -147,9 +157,9 @@ func (cp *chargePoint) StopTransaction(meterStop int, timestamp *types.DateTime,
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.StopTransactionConfirmation), err
 	}
+
+	return confirmation.(*core.StopTransactionConfirmation), err
 }
 
 func (cp *chargePoint) StatusNotification(connectorId int, errorCode core.ChargePointErrorCode, status core.ChargePointStatus, props ...func(request *core.StatusNotificationRequest)) (*core.StatusNotificationConfirmation, error) {
@@ -160,9 +170,9 @@ func (cp *chargePoint) StatusNotification(connectorId int, errorCode core.Charge
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*core.StatusNotificationConfirmation), err
 	}
+
+	return confirmation.(*core.StatusNotificationConfirmation), err
 }
 
 func (cp *chargePoint) DiagnosticsStatusNotification(status firmware.DiagnosticsStatus, props ...func(request *firmware.DiagnosticsStatusNotificationRequest)) (*firmware.DiagnosticsStatusNotificationConfirmation, error) {
@@ -173,9 +183,9 @@ func (cp *chargePoint) DiagnosticsStatusNotification(status firmware.Diagnostics
 	confirmation, err := cp.SendRequest(request)
 	if err != nil {
 		return nil, err
-	} else {
-		return confirmation.(*firmware.DiagnosticsStatusNotificationConfirmation), err
 	}
+
+	return confirmation.(*firmware.DiagnosticsStatusNotificationConfirmation), err
 }
 
 func (cp *chargePoint) FirmwareStatusNotification(status firmware.FirmwareStatus, props ...func(request *firmware.FirmwareStatusNotificationRequest)) (*firmware.FirmwareStatusNotificationConfirmation, error) {
@@ -300,7 +310,7 @@ func (cp *chargePoint) SendRequest(request ocpp.Request) (ocpp.Response, error) 
 	send := func() (string, error) {
 		return cp.client.SendRequest(request)
 	}
-	err := cp.callbacks.RegisterCallback("main", send, func(confirmation ocpp.Response, err error) {
+	err := cp.callbacks.RegisterCallback(cp.client.Id, send, func(confirmation ocpp.Response, err error) {
 		asyncResponseC <- asyncResponse{r: confirmation, e: err}
 	})
 	if err != nil {
@@ -339,26 +349,26 @@ func (cp *chargePoint) SendRequestAsync(request ocpp.Request, callback func(conf
 	send := func() (string, error) {
 		return cp.client.SendRequest(request)
 	}
-	err := cp.callbacks.RegisterCallback("main", send, callback)
+	err := cp.callbacks.RegisterCallback(cp.client.Id, send, callback)
 	return err
 }
 
 func (cp *chargePoint) asyncCallbackHandler() {
 	for {
 		select {
-		case confirmation := <-cp.confirmationHandler:
-			// Get and invoke callback
-			cb, ok := cp.callbacks.GetCallback("main", "")
+		case resp := <-cp.confirmationHandler:
+			// Get and invoke callback using the request ID
+			cb, ok := cp.callbacks.GetCallback(cp.client.Id, resp.requestID)
 			if ok {
-				cb(confirmation, nil)
+				cb(resp.response, nil)
 				continue
 			}
 
-			err := fmt.Errorf("no handler available for incoming response %v", confirmation.GetFeatureName())
+			err := fmt.Errorf("no handler available for incoming response %v (requestId: %s)", resp.response.GetFeatureName(), resp.requestID)
 			cp.error(err)
 		case protoError := <-cp.errorHandler:
-			cb, ok := cp.callbacks.GetCallback("main", "")
-			// Get and invoke callback
+			// Get and invoke callback using the message ID from the error
+			cb, ok := cp.callbacks.GetCallback(cp.client.Id, protoError.MessageId)
 			if ok {
 				cb(nil, protoError)
 				continue
@@ -375,7 +385,7 @@ func (cp *chargePoint) asyncCallbackHandler() {
 }
 
 func (cp *chargePoint) clearCallbacks(invokeCallback bool) {
-	cb, ok := cp.callbacks.GetAllCallbacks("main")
+	cb, ok := cp.callbacks.GetAllCallbacks(cp.client.Id)
 	if !ok {
 		return
 	}

@@ -244,8 +244,8 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, log
 
 	cs := chargingStation{
 		client:       endpoint,
-		responseChan: make(chan ocpp.Response, 1),
-		errorChan:    make(chan error, 1),
+		responseChan: make(chan responseWithID, 1),
+		errorChan:    make(chan *ocpp.Error, 1),
 		callbacks:    callback.New(),
 	}
 
@@ -253,7 +253,7 @@ func NewChargingStation(id string, endpoint *ocppj.Client, client ws.Client, log
 	endpoint.SetOnRequestCanceled(cs.onRequestTimeout)
 
 	cs.client.SetResponseHandler(func(confirmation ocpp.Response, requestId string) {
-		cs.responseChan <- confirmation
+		cs.responseChan <- responseWithID{response: confirmation, requestID: requestId}
 	})
 	cs.client.SetErrorHandler(func(err *ocpp.Error, details interface{}) {
 		cs.errorChan <- err
