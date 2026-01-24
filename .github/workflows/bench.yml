@@ -2,10 +2,10 @@ name: Benchmarks
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
     paths:
       # Only run the benchmark on internals
       - 'internal/**'
@@ -46,12 +46,6 @@ jobs:
           driver-opts: |
             image=moby/buildkit:latest
 
-      - name: Run benchmarks
-        env:
-          DOCKER_BUILDKIT: 1
-          COMPOSE_DOCKER_CLI_BUILD: 1
-        run: make benchmarks
-
       # Download previous benchmark result from artifact (if exists)
       - name: Download previous benchmark data
         uses: actions/download-artifact@v7
@@ -59,6 +53,12 @@ jobs:
         with:
           name: benchmark-data
           path: ./cache
+
+      - name: Run benchmarks
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+        run: make benchmarks
 
       # Run `github-action-benchmark` action
       - name: Store benchmark result
