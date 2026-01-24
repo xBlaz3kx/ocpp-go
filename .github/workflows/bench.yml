@@ -18,9 +18,11 @@ jobs:
     name: Performance regression check
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      # Needed for posting comments on PRs
+      # Needed for posting comments on PRs and storing packages
+      contents: write
       pull-requests: write
+      packages: write
+
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
