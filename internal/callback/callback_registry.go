@@ -14,52 +14,94 @@ type RequestID string
 
 // CallbackRegistry registers and retrieves callbacks based on client ID and request ID.
 // This allows callbacks to be registered for specific requests and retrieved when responses arrive.
+// The registry uses per-client locks to allow concurrent operations on different clients
+// while preventing race conditions for individual client operations.
 type Registry struct {
-	mutex     sync.RWMutex
-	callbacks map[ClientID]map[RequestID]func(confirmation ocpp.Response, err error)
+	globalMutex sync.RWMutex             // Protects the clientLocks and callbacks maps
+	clientLocks map[ClientID]*sync.Mutex // Per-client locks for concurrent send operations
+	callbacks   map[ClientID]map[RequestID]func(confirmation ocpp.Response, err error)
 }
 
 // New creates a new CallbackRegistry instance.
 func New() *Registry {
 	return &Registry{
-		callbacks: make(map[ClientID]map[RequestID]func(confirmation ocpp.Response, err error)),
+		clientLocks: make(map[ClientID]*sync.Mutex),
+		callbacks:   make(map[ClientID]map[RequestID]func(confirmation ocpp.Response, err error)),
 	}
+}
+
+// getClientLock returns the lock for a specific client, creating one if it doesn't exist.
+// This allows concurrent sends to different clients while serializing operations per-client.
+func (cr *Registry) getClientLock(clientID ClientID) *sync.Mutex {
+	cr.globalMutex.RLock()
+	lock, exists := cr.clientLocks[clientID]
+	cr.globalMutex.RUnlock()
+
+	if exists {
+		return lock
+	}
+
+	cr.globalMutex.Lock()
+	defer cr.globalMutex.Unlock()
+	// Double-check after acquiring write lock
+	if lock, exists = cr.clientLocks[clientID]; exists {
+		return lock
+	}
+	lock = &sync.Mutex{}
+	cr.clientLocks[clientID] = lock
+	return lock
 }
 
 // RegisterCallback registers a callback for a specific client ID and request ID.
 // If the try function returns an error, the callback is not registered and the error is returned.
 // If the try function succeeds, the callback is registered and can be retrieved later using GetCallback.
+// The per-client lock ensures that the callback is registered before any response can be looked up,
+// while still allowing concurrent sends to different clients.
 func (cr *Registry) RegisterCallback(clientID string, try func() (string, error), callback func(confirmation ocpp.Response, err error)) error {
-	cr.mutex.Lock()
-	defer cr.mutex.Unlock()
+	cID := ClientID(clientID)
 
-	// Initialize the inner map if it doesn't exist
-	if cr.callbacks[ClientID(clientID)] == nil {
-		cr.callbacks[ClientID(clientID)] = make(map[RequestID]func(confirmation ocpp.Response, err error))
-	}
+	// Get per-client lock - this serializes operations for the same client
+	// but allows concurrent operations on different clients
+	clientLock := cr.getClientLock(cID)
+	clientLock.Lock()
+	defer clientLock.Unlock()
 
+	// Perform the try operation (typically SendRequest) while holding the client lock
+	// This ensures the callback is registered before any response can be looked up
 	requestId, err := try()
 	if err != nil {
-		// Clean up empty client maps
-		if len(cr.callbacks[ClientID(clientID)]) == 0 {
-			delete(cr.callbacks, ClientID(clientID))
-		}
 		return err
 	}
 
-	// Register the callback
-	cr.callbacks[ClientID(clientID)][RequestID(requestId)] = callback
+	// Now acquire global lock only for map access
+	cr.globalMutex.Lock()
+	defer cr.globalMutex.Unlock()
 
+	// Initialize the inner map if it doesn't exist
+	if cr.callbacks[cID] == nil {
+		cr.callbacks[cID] = make(map[RequestID]func(confirmation ocpp.Response, err error))
+	}
+
+	// Register the callback
+	cr.callbacks[cID][RequestID(requestId)] = callback
 	return nil
 }
 
 // GetCallback retrieves and removes the callback for a specific client ID and request ID.
 // Returns the callback and true if found, nil and false otherwise.
+// The per-client lock ensures this doesn't race with RegisterCallback for the same client.
 func (cr *Registry) GetCallback(clientID string, requestID string) (func(confirmation ocpp.Response, err error), bool) {
-	cr.mutex.Lock()
-	defer cr.mutex.Unlock()
+	cID := ClientID(clientID)
 
-	clientCallbacks, ok := cr.callbacks[ClientID(clientID)]
+	// Get per-client lock to ensure we don't race with RegisterCallback
+	clientLock := cr.getClientLock(cID)
+	clientLock.Lock()
+	defer clientLock.Unlock()
+
+	cr.globalMutex.Lock()
+	defer cr.globalMutex.Unlock()
+
+	clientCallbacks, ok := cr.callbacks[cID]
 	if !ok {
 		return nil, false
 	}
@@ -73,7 +115,7 @@ func (cr *Registry) GetCallback(clientID string, requestID string) (func(confirm
 	delete(clientCallbacks, RequestID(requestID))
 	// Clean up empty client maps
 	if len(clientCallbacks) == 0 {
-		delete(cr.callbacks, ClientID(clientID))
+		delete(cr.callbacks, cID)
 	}
 
 	return callback, true
@@ -82,10 +124,17 @@ func (cr *Registry) GetCallback(clientID string, requestID string) (func(confirm
 // RemoveCallback removes a callback for a specific client ID and request ID without invoking it.
 // Returns true if the callback was found and removed, false otherwise.
 func (cr *Registry) RemoveCallback(clientID string, requestID string) bool {
-	cr.mutex.Lock()
-	defer cr.mutex.Unlock()
+	cID := ClientID(clientID)
 
-	clientCallbacks, ok := cr.callbacks[ClientID(clientID)]
+	// Get per-client lock
+	clientLock := cr.getClientLock(cID)
+	clientLock.Lock()
+	defer clientLock.Unlock()
+
+	cr.globalMutex.Lock()
+	defer cr.globalMutex.Unlock()
+
+	clientCallbacks, ok := cr.callbacks[cID]
 	if !ok {
 		return false
 	}
@@ -98,7 +147,7 @@ func (cr *Registry) RemoveCallback(clientID string, requestID string) bool {
 	delete(clientCallbacks, RequestID(requestID))
 	// Clean up empty client maps
 	if len(clientCallbacks) == 0 {
-		delete(cr.callbacks, ClientID(clientID))
+		delete(cr.callbacks, cID)
 	}
 
 	return true
@@ -108,11 +157,17 @@ func (cr *Registry) RemoveCallback(clientID string, requestID string) bool {
 // Returns a map of request ID to callback function, and true if any callbacks were found.
 // The returned map will be empty if no callbacks exist for the client.
 func (cr *Registry) GetAllCallbacks(clientID string) (map[RequestID]func(confirmation ocpp.Response, err error), bool) {
-	cr.mutex.Lock()
-	defer cr.mutex.Unlock()
+	cID := ClientID(clientID)
 
-	clientId := ClientID(clientID)
-	clientCallbacks, ok := cr.callbacks[clientId]
+	// Get per-client lock
+	clientLock := cr.getClientLock(cID)
+	clientLock.Lock()
+	defer clientLock.Unlock()
+
+	cr.globalMutex.Lock()
+	defer cr.globalMutex.Unlock()
+
+	clientCallbacks, ok := cr.callbacks[cID]
 	if !ok || len(clientCallbacks) == 0 {
 		return make(map[RequestID]func(confirmation ocpp.Response, err error)), false
 	}
@@ -124,22 +179,29 @@ func (cr *Registry) GetAllCallbacks(clientID string) (map[RequestID]func(confirm
 	}
 
 	// Remove all callbacks for this client
-	delete(cr.callbacks, clientId)
+	delete(cr.callbacks, cID)
 	return result, true
 }
 
 // ClearCallbacks removes all callbacks for a specific client ID.
 // Returns the number of callbacks that were removed.
 func (cr *Registry) ClearCallbacks(clientID string) int {
-	cr.mutex.Lock()
-	defer cr.mutex.Unlock()
+	cID := ClientID(clientID)
 
-	clientCallbacks, ok := cr.callbacks[ClientID(clientID)]
+	// Get per-client lock
+	clientLock := cr.getClientLock(cID)
+	clientLock.Lock()
+	defer clientLock.Unlock()
+
+	cr.globalMutex.Lock()
+	defer cr.globalMutex.Unlock()
+
+	clientCallbacks, ok := cr.callbacks[cID]
 	if !ok {
 		return 0
 	}
 
 	count := len(clientCallbacks)
-	delete(cr.callbacks, ClientID(clientID))
+	delete(cr.callbacks, cID)
 	return count
 }

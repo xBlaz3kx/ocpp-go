@@ -739,3 +739,109 @@ func (suite *CallbackRegistryTestSuite) TestRegisterCallbackEmptyIDAfterFailure(
 func TestCallbackRegistry(t *testing.T) {
 	suite.Run(t, new(CallbackRegistryTestSuite))
 }
+
+// BenchmarkConcurrentClientsSameClient benchmarks concurrent operations on the same client
+func BenchmarkConcurrentClientsSameClient(b *testing.B) {
+	registry := New()
+	clientID := "client-1"
+
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			requestID := fmt.Sprintf("req-%d", i)
+			i++
+
+			callback := func(confirmation ocpp.Response, err error) {}
+			try := func() (string, error) {
+				return requestID, nil
+			}
+
+			err := registry.RegisterCallback(clientID, try, callback)
+			if err != nil {
+				b.Fatalf("RegisterCallback failed: %v", err)
+			}
+
+			_, _ = registry.GetCallback(clientID, requestID)
+		}
+	})
+}
+
+// BenchmarkConcurrentClientsDifferentClients benchmarks concurrent operations on different clients
+// This benchmark should show improved performance with per-client locks
+func BenchmarkConcurrentClientsDifferentClients(b *testing.B) {
+	registry := New()
+	numClients := 100
+
+	b.RunParallel(func(pb *testing.PB) {
+		clientIndex := 0
+		i := 0
+		for pb.Next() {
+			clientID := fmt.Sprintf("client-%d", clientIndex%numClients)
+			requestID := fmt.Sprintf("req-%d", i)
+			clientIndex++
+			i++
+
+			callback := func(confirmation ocpp.Response, err error) {}
+			try := func() (string, error) {
+				return requestID, nil
+			}
+
+			err := registry.RegisterCallback(clientID, try, callback)
+			if err != nil {
+				b.Fatalf("RegisterCallback failed: %v", err)
+			}
+
+			_, _ = registry.GetCallback(clientID, requestID)
+		}
+	})
+}
+
+// TestConcurrentClientsSendToSameAndDifferent tests that concurrent operations
+// work correctly when mixing same-client and different-client operations
+func (suite *CallbackRegistryTestSuite) TestConcurrentClientsSendToSameAndDifferent() {
+	numClients := 5
+	callbacksPerClient := 20
+	var wg sync.WaitGroup
+	receivedCallbacks := sync.Map{}
+
+	// Register and immediately retrieve callbacks for multiple clients concurrently
+	for clientIndex := 0; clientIndex < numClients; clientIndex++ {
+		clientID := fmt.Sprintf("client-%d", clientIndex)
+		for reqIndex := 0; reqIndex < callbacksPerClient; reqIndex++ {
+			wg.Add(1)
+			go func(cID string, rIndex int) {
+				defer wg.Done()
+				requestID := fmt.Sprintf("req-%d", rIndex)
+				key := fmt.Sprintf("%s-%s", cID, requestID)
+
+				callback := func(confirmation ocpp.Response, err error) {
+					receivedCallbacks.Store(key, true)
+				}
+
+				try := func() (string, error) {
+					return requestID, nil
+				}
+
+				err := suite.registry.RegisterCallback(cID, try, callback)
+				suite.Require().NoError(err)
+
+				// Simulate some processing time
+				cb, ok := suite.registry.GetCallback(cID, requestID)
+				if ok && cb != nil {
+					cb(nil, nil)
+				}
+			}(clientID, reqIndex)
+		}
+	}
+
+	wg.Wait()
+
+	// Verify all callbacks were invoked
+	totalExpected := numClients * callbacksPerClient
+	count := 0
+	receivedCallbacks.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	suite.Assert().Equal(totalExpected, count, "All callbacks should be received")
+}
