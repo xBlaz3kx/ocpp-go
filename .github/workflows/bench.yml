@@ -55,6 +55,7 @@ jobs:
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
+          lookup-only: 'true'
 
       # Run `github-action-benchmark` action
       - name: Store benchmark result
@@ -77,6 +78,7 @@ jobs:
           comment-on-alert: true
           # Enable Job Summary for PRs
           summary-always: true
+          save-data-file: 'true'
 
       - name: Store benchmark
         # Only push when on main branch
