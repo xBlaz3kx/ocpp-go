@@ -2,10 +2,10 @@ name: Benchmarks
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     branches:
-      - main
+      - master
     paths:
       # Only run the benchmark on internals
       - 'internal/**'
@@ -25,9 +25,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -37,6 +39,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -49,13 +52,13 @@ jobs:
           COMPOSE_DOCKER_CLI_BUILD: 1
         run: make benchmarks
 
-      # Download previous benchmark result from cache (if exists)
+      # Download previous benchmark result from artifact (if exists)
       - name: Download previous benchmark data
-        uses: actions/cache@v4
+        uses: actions/download-artifact@v7
+        continue-on-error: true
         with:
+          name: benchmark-data
           path: ./cache
-          key: ${{ runner.os }}-benchmark
-          lookup-only: 'true'
 
       # Run `github-action-benchmark` action
       - name: Store benchmark result
@@ -80,10 +83,11 @@ jobs:
           summary-always: true
           save-data-file: 'true'
 
-      - name: Store benchmark
-        # Only push when on main branch
+      - name: Upload benchmark data
+        # Only store when on main branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/cache@v4
+        uses: actions/upload-artifact@v4
         with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
+          name: benchmark-data
+          path: ./cache/benchmark-data.json
+          overwrite: true
