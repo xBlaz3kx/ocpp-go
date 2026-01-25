@@ -48,11 +48,12 @@ jobs:
 
       # Download previous benchmark result from artifact (if exists)
       - name: Download previous benchmark data
-        uses: actions/download-artifact@v7
         continue-on-error: true
-        with:
-          name: benchmark-data
-          path: ./cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ./cache
+          gh run download --name benchmark-data --dir ./cache
 
       - name: Run benchmarks
         env:
