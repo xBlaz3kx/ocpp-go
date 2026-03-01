@@ -74,7 +74,7 @@ jobs:
           driver-opts: |
             image=moby/buildkit:latest
       - name: Download coverage from unit tests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: unit_coverage_${{ github.sha }}
       - name: Run integration tests
@@ -251,7 +251,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Download coverage from tests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: coverage_${{ github.sha }}
       - name: Publish
