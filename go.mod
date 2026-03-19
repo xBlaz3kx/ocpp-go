@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/grafana/pyroscope-go v1.2.4
 	github.com/pkg/errors v0.9.1
-	github.com/relvacode/iso8601 v1.6.0
+	github.com/relvacode/iso8601 v1.7.0
 	github.com/samber/lo v1.46.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
