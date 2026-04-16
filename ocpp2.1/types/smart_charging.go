@@ -185,8 +185,15 @@ func NewChargingProfile(id int, stackLevel int, chargingProfilePurpose ChargingP
 type EnergyTransferMode string
 
 const (
-	EnergyTransferModeDC       EnergyTransferMode = "DC"              // DC charging.
-	EnergyTransferModeAC1Phase EnergyTransferMode = "AC_single_phase" // AC single phase charging according to IEC 62196.
-	EnergyTransferModeAC2Phase EnergyTransferMode = "AC_two_phase"    // AC two phase charging according to IEC 62196.
-	EnergyTransferModeAC3Phase EnergyTransferMode = "AC_three_phase"  // AC three phase charging according to IEC 62196.
+	EnergyTransferModeDC        EnergyTransferMode = "DC"              // DC charging.
+	EnergyTransferModeAC1Phase  EnergyTransferMode = "AC_single_phase" // AC single phase charging according to IEC 62196.
+	EnergyTransferModeAC2Phase  EnergyTransferMode = "AC_two_phase"    // AC two phase charging according to IEC 62196.
+	EnergyTransferModeAC3Phase  EnergyTransferMode = "AC_three_phase"  // AC three phase charging according to IEC 62196.
+	EnergyTransferModeACBPT     EnergyTransferMode = "AC_BPT"          // AC bidirectional power transfer.
+	EnergyTransferModeACBPTDER  EnergyTransferMode = "AC_BPT_DER"      // AC bidirectional power transfer with DER.
+	EnergyTransferModeACDER     EnergyTransferMode = "AC_DER"          // AC with DER.
+	EnergyTransferModeDCBPT     EnergyTransferMode = "DC_BPT"          // DC bidirectional power transfer.
+	EnergyTransferModeDCACDP    EnergyTransferMode = "DC_ACDP"         // DC with automated connection device.
+	EnergyTransferModeDCACDPBPT EnergyTransferMode = "DC_ACDP_BPT"     // DC ACDP with bidirectional power transfer.
+	EnergyTransferModeWPT       EnergyTransferMode = "WPT"             // Wireless power transfer.
 )

@@ -63,7 +63,7 @@ func isValidIdToken(sl validator.StructLevel) {
 }
 
 type AdditionalInfo struct {
-	AdditionalIdToken string `json:"additionalIdToken" validate:"required,max=36"`
+	AdditionalIdToken string `json:"additionalIdToken" validate:"required,max=255"`
 	Type              string `json:"type" validate:"required,max=50"`
 }
 
@@ -97,6 +97,7 @@ type IdTokenInfo struct {
 	Language2           string              `json:"language2,omitempty" validate:"max=8"`
 	GroupIdToken        *GroupIdToken       `json:"groupIdToken,omitempty"`
 	PersonalMessage     *MessageContent     `json:"personalMessage,omitempty"`
+	EvseId              []int               `json:"evseId,omitempty" validate:"omitempty,dive,gte=0"`
 }
 
 // NewIdTokenInfo creates an IdTokenInfo. Optional parameters may be set afterwards on the initialized struct.
