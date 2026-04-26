@@ -9,26 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestClearCacheRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.ClearCacheRequest{}, true},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestClearCacheConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.ClearCacheConfirmation{Status: core.ClearCacheStatusAccepted}, true},
-		{core.ClearCacheConfirmation{Status: core.ClearCacheStatusRejected}, true},
-		{core.ClearCacheConfirmation{Status: "invalidClearCacheStatus"}, false},
-		{core.ClearCacheConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestClearCacheE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

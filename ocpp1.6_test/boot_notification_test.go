@@ -11,42 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tests
-func (suite *OcppV16TestSuite) TestBootNotificationRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: "test"}, true},
-		{core.BootNotificationRequest{ChargeBoxSerialNumber: "test", ChargePointModel: "test", ChargePointSerialNumber: "number", ChargePointVendor: "test", FirmwareVersion: "version", Iccid: "test", Imsi: "test"}, true},
-		{core.BootNotificationRequest{ChargeBoxSerialNumber: "test", ChargePointSerialNumber: "number", ChargePointVendor: "test", FirmwareVersion: "version", Iccid: "test", Imsi: "test"}, false},
-		{core.BootNotificationRequest{ChargeBoxSerialNumber: "test", ChargePointModel: "test", ChargePointSerialNumber: "number", FirmwareVersion: "version", Iccid: "test", Imsi: "test"}, false},
-		{core.BootNotificationRequest{ChargeBoxSerialNumber: ">25.......................", ChargePointModel: "test", ChargePointVendor: "test"}, false},
-		{core.BootNotificationRequest{ChargePointModel: ">20..................", ChargePointVendor: "test"}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointSerialNumber: ">25.......................", ChargePointVendor: "test"}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: ">20.................."}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: "test", FirmwareVersion: ">50................................................"}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: "test", Iccid: ">20.................."}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: "test", Imsi: ">20.................."}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: "test", MeterSerialNumber: ">25......................."}, false},
-		{core.BootNotificationRequest{ChargePointModel: "test", ChargePointVendor: "test", MeterType: ">25......................."}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestBootNotificationConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Interval: 60, Status: core.RegistrationStatusAccepted}, true},
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Interval: 60, Status: core.RegistrationStatusPending}, true},
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Interval: 60, Status: core.RegistrationStatusRejected}, true},
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Status: core.RegistrationStatusAccepted}, true},
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Interval: -1, Status: core.RegistrationStatusRejected}, false},
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Interval: 60, Status: "invalidRegistrationStatus"}, false},
-		{core.BootNotificationConfirmation{CurrentTime: types.NewDateTime(time.Now()), Interval: 60}, false},
-		{core.BootNotificationConfirmation{Interval: 60, Status: core.RegistrationStatusAccepted}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestBootNotificationE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

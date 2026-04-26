@@ -5,37 +5,11 @@ import (
 
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/lorenzodonini/ocpp-go/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// Test
-func (suite *OcppV16TestSuite) TestRemoteStartTransactionRequestValidation() {
-	t := suite.T()
-	chargingSchedule := types.NewChargingSchedule(types.ChargingRateUnitWatts, types.NewChargingSchedulePeriod(0, 10.0))
-	chargingProfile := types.NewChargingProfile(1, 1, types.ChargingProfilePurposeChargePointMaxProfile, types.ChargingProfileKindAbsolute, chargingSchedule)
-	var requestTable = []GenericTestEntry{
-		{core.RemoteStartTransactionRequest{IdTag: "12345", ConnectorId: newInt(1), ChargingProfile: chargingProfile}, true},
-		{core.RemoteStartTransactionRequest{IdTag: "12345", ConnectorId: newInt(1)}, true},
-		{core.RemoteStartTransactionRequest{IdTag: "12345"}, true},
-		{core.RemoteStartTransactionRequest{IdTag: "12345", ConnectorId: newInt(-1)}, false},
-		{core.RemoteStartTransactionRequest{}, false},
-		{core.RemoteStartTransactionRequest{IdTag: ">20..................", ConnectorId: newInt(1)}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestRemoteStartTransactionConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.RemoteStartTransactionConfirmation{Status: types.RemoteStartStopStatusAccepted}, true},
-		{core.RemoteStartTransactionConfirmation{Status: types.RemoteStartStopStatusRejected}, true},
-		{core.RemoteStartTransactionConfirmation{Status: "invalidRemoteStartTransactionStatus"}, false},
-		{core.RemoteStartTransactionConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
 
 func (suite *OcppV16TestSuite) TestRemoteStartTransactionE2EMocked() {
 	t := suite.T()
@@ -43,7 +17,7 @@ func (suite *OcppV16TestSuite) TestRemoteStartTransactionE2EMocked() {
 	messageId := defaultMessageId
 	wsUrl := "someUrl"
 	idTag := "12345"
-	connectorId := newInt(1)
+	connectorId := tests.NewInt(1)
 	chargingProfileId := 1
 	stackLevel := 1
 	chargingProfilePurpose := types.ChargingProfilePurposeChargePointMaxProfile

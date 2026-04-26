@@ -9,25 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestDiagnosticsStatusNotificationRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{firmware.DiagnosticsStatusNotificationRequest{Status: firmware.DiagnosticsStatusUploaded}, true},
-		{firmware.DiagnosticsStatusNotificationRequest{}, false},
-		{firmware.DiagnosticsStatusNotificationRequest{Status: "invalidDiagnosticsStatus"}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestDiagnosticsStatusNotificationConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{firmware.DiagnosticsStatusNotificationConfirmation{}, true},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestDiagnosticsStatusNotificationE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

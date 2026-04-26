@@ -11,27 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestAuthorizeRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.AuthorizeRequest{IdTag: "12345"}, true},
-		{core.AuthorizeRequest{}, false},
-		{core.AuthorizeRequest{IdTag: ">20.................."}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestAuthorizeConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.AuthorizeConfirmation{IdTagInfo: &types.IdTagInfo{ExpiryDate: types.NewDateTime(time.Now().Add(time.Hour * 8)), ParentIdTag: "00000", Status: types.AuthorizationStatusAccepted}}, true},
-		{core.AuthorizeConfirmation{IdTagInfo: &types.IdTagInfo{Status: "invalidAuthorizationStatus"}}, false},
-		{core.AuthorizeConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestAuthorizeE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

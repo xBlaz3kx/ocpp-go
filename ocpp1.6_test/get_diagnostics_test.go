@@ -6,38 +6,11 @@ import (
 
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/lorenzodonini/ocpp-go/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// Test
-func (suite *OcppV16TestSuite) TestGetDiagnosticsRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path", Retries: newInt(10), RetryInterval: newInt(10), StartTime: types.NewDateTime(time.Now()), StopTime: types.NewDateTime(time.Now())}, true},
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path", Retries: newInt(10), RetryInterval: newInt(10), StartTime: types.NewDateTime(time.Now())}, true},
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path", Retries: newInt(10), RetryInterval: newInt(10)}, true},
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path", Retries: newInt(10)}, true},
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path"}, true},
-		{firmware.GetDiagnosticsRequest{}, false},
-		{firmware.GetDiagnosticsRequest{Location: "invalidUri"}, false},
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path", Retries: newInt(-1)}, false},
-		{firmware.GetDiagnosticsRequest{Location: "ftp:some/path", RetryInterval: newInt(-1)}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestGetDiagnosticsConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{firmware.GetDiagnosticsConfirmation{FileName: "someFileName"}, true},
-		{firmware.GetDiagnosticsConfirmation{FileName: ""}, true},
-		{firmware.GetDiagnosticsConfirmation{}, true},
-		{firmware.GetDiagnosticsConfirmation{FileName: ">255............................................................................................................................................................................................................................................................"}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
 
 func (suite *OcppV16TestSuite) TestGetDiagnosticsE2EMocked() {
 	t := suite.T()
@@ -46,8 +19,8 @@ func (suite *OcppV16TestSuite) TestGetDiagnosticsE2EMocked() {
 	wsUrl := "someUrl"
 	location := "ftp:some/path"
 	fileName := "diagnostics.json"
-	retries := newInt(10)
-	retryInterval := newInt(600)
+	retries := tests.NewInt(10)
+	retryInterval := tests.NewInt(600)
 	startTime := types.NewDateTime(time.Now().Add(-10 * time.Hour * 24))
 	stopTime := types.NewDateTime(time.Now())
 	requestJson := fmt.Sprintf(`[2,"%v","%v",{"location":"%v","retries":%v,"retryInterval":%v,"startTime":"%v","stopTime":"%v"}]`,

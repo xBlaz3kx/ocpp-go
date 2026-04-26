@@ -9,27 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestGetLocalListVersionRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{localauth.GetLocalListVersionRequest{}, true},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestGetLocalListVersionConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{localauth.GetLocalListVersionConfirmation{ListVersion: 1}, true},
-		{localauth.GetLocalListVersionConfirmation{ListVersion: 0}, true},
-		{localauth.GetLocalListVersionConfirmation{}, true},
-		{localauth.GetLocalListVersionConfirmation{ListVersion: -1}, true},
-		{localauth.GetLocalListVersionConfirmation{ListVersion: -2}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestGetLocalListVersionE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

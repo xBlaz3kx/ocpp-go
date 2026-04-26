@@ -12,34 +12,6 @@ import (
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestStatusNotificationRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError, Info: "mockInfo", Status: core.ChargePointStatusAvailable, Timestamp: types.NewDateTime(time.Now()), VendorId: "mockId", VendorErrorCode: "mockErrorCode"}, true},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError, Status: core.ChargePointStatusAvailable}, true},
-		{core.StatusNotificationRequest{ErrorCode: core.NoError, Status: core.ChargePointStatusAvailable}, true},
-		{core.StatusNotificationRequest{ConnectorId: -1, ErrorCode: core.NoError, Status: core.ChargePointStatusAvailable}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, Status: core.ChargePointStatusAvailable}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: "invalidErrorCode", Status: core.ChargePointStatusAvailable}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError, Status: "invalidChargePointStatus"}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError, Info: ">50................................................", Status: core.ChargePointStatusAvailable}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError, VendorErrorCode: ">50................................................", Status: core.ChargePointStatusAvailable}, false},
-		{core.StatusNotificationRequest{ConnectorId: 0, ErrorCode: core.NoError, VendorId: ">255............................................................................................................................................................................................................................................................", Status: core.ChargePointStatusAvailable}, false},
-		//{ocpp16.StatusNotificationRequest{ConnectorId: 0, ErrorCode: ocpp16.NoError, Info: "mockInfo", Status: ocpp16.ChargePointStatusAvailable, Timestamp: ocpp16.DateTime{Time: time.Now().Add(1 * time.Hour)}, VendorId: "mockId", VendorErrorCode: "mockErrorCode"}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestStatusNotificationConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.StatusNotificationConfirmation{}, true},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestStatusNotificationE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

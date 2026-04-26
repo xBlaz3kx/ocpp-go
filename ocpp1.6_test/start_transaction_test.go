@@ -6,38 +6,11 @@ import (
 
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/lorenzodonini/ocpp-go/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// Test
-func (suite *OcppV16TestSuite) TestStartTransactionRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.StartTransactionRequest{ConnectorId: 1, IdTag: "12345", MeterStart: 100, ReservationId: newInt(42), Timestamp: types.NewDateTime(time.Now())}, true},
-		{core.StartTransactionRequest{ConnectorId: 1, IdTag: "12345", MeterStart: 100, Timestamp: types.NewDateTime(time.Now())}, true},
-		{core.StartTransactionRequest{ConnectorId: 1, IdTag: "12345", Timestamp: types.NewDateTime(time.Now())}, true},
-		{core.StartTransactionRequest{ConnectorId: 0, IdTag: "12345", MeterStart: 100, Timestamp: types.NewDateTime(time.Now())}, false},
-		{core.StartTransactionRequest{ConnectorId: -1, IdTag: "12345", MeterStart: 100, Timestamp: types.NewDateTime(time.Now())}, false},
-		{core.StartTransactionRequest{ConnectorId: 1, IdTag: ">20..................", MeterStart: 100, Timestamp: types.NewDateTime(time.Now())}, false},
-		{core.StartTransactionRequest{IdTag: "12345", MeterStart: 100, Timestamp: types.NewDateTime(time.Now())}, false},
-		{core.StartTransactionRequest{ConnectorId: 1, MeterStart: 100, Timestamp: types.NewDateTime(time.Now())}, false},
-		{core.StartTransactionRequest{ConnectorId: 1, IdTag: "12345", MeterStart: 100}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestStartTransactionConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.StartTransactionConfirmation{IdTagInfo: &types.IdTagInfo{ExpiryDate: types.NewDateTime(time.Now().Add(time.Hour * 8)), ParentIdTag: "00000", Status: types.AuthorizationStatusAccepted}, TransactionId: 10}, true},
-		{core.StartTransactionConfirmation{IdTagInfo: &types.IdTagInfo{ExpiryDate: types.NewDateTime(time.Now().Add(time.Hour * 8)), ParentIdTag: "00000", Status: types.AuthorizationStatusAccepted}}, true},
-		{core.StartTransactionConfirmation{IdTagInfo: &types.IdTagInfo{Status: "invalidAuthorizationStatus"}, TransactionId: 10}, false},
-		{core.StartTransactionConfirmation{TransactionId: 10}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
 
 func (suite *OcppV16TestSuite) TestStartTransactionE2EMocked() {
 	t := suite.T()
@@ -46,7 +19,7 @@ func (suite *OcppV16TestSuite) TestStartTransactionE2EMocked() {
 	wsUrl := "someUrl"
 	idTag := "tag1"
 	meterStart := 100
-	reservationId := newInt(42)
+	reservationId := tests.NewInt(42)
 	connectorId := 1
 	timestamp := types.NewDateTime(time.Now())
 	parentIdTag := "parentTag1"

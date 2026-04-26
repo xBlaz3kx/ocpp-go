@@ -10,31 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestSetChargingProfileRequestValidation() {
-	t := suite.T()
-	chargingSchedule := types.NewChargingSchedule(types.ChargingRateUnitWatts, types.NewChargingSchedulePeriod(0, 10.0))
-	chargingProfile := types.NewChargingProfile(1, 1, types.ChargingProfilePurposeChargePointMaxProfile, types.ChargingProfileKindAbsolute, chargingSchedule)
-	requestTable := []GenericTestEntry{
-		{smartcharging.SetChargingProfileRequest{ConnectorId: 1, ChargingProfile: chargingProfile}, true},
-		{smartcharging.SetChargingProfileRequest{ChargingProfile: chargingProfile}, true},
-		{smartcharging.SetChargingProfileRequest{}, false},
-		{smartcharging.SetChargingProfileRequest{ConnectorId: 1}, false},
-		{smartcharging.SetChargingProfileRequest{ConnectorId: -1, ChargingProfile: chargingProfile}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestSetChargingProfileConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{smartcharging.SetChargingProfileConfirmation{Status: smartcharging.ChargingProfileStatusAccepted}, true},
-		{smartcharging.SetChargingProfileConfirmation{Status: "invalidChargingProfileStatus"}, false},
-		{smartcharging.SetChargingProfileConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestSetChargingProfileE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

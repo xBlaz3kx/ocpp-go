@@ -11,34 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestReserveNowRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345", ReservationId: 42, ParentIdTag: "9999"}, true},
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345", ReservationId: 42}, true},
-		{reservation.ReserveNowRequest{ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345", ReservationId: 42}, true},
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345"}, true},
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now())}, false},
-		{reservation.ReserveNowRequest{ConnectorId: 1, IdTag: "12345"}, false},
-		{reservation.ReserveNowRequest{ConnectorId: -1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345", ReservationId: 42}, false},
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345", ReservationId: -1}, true},
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: ">20.................."}, false},
-		{reservation.ReserveNowRequest{ConnectorId: 1, ExpiryDate: types.NewDateTime(time.Now()), IdTag: "12345", ReservationId: 42, ParentIdTag: ">20.................."}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestReserveNowConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{reservation.ReserveNowConfirmation{Status: reservation.ReservationStatusAccepted}, true},
-		{reservation.ReserveNowConfirmation{Status: "invalidReserveNowStatus"}, false},
-		{reservation.ReserveNowConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestReserveNowE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"
