@@ -5,41 +5,18 @@ import (
 
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/core"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/remotetrigger"
+	"github.com/lorenzodonini/ocpp-go/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// Test
-func (suite *OcppV16TestSuite) TestTriggerMessageRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{remotetrigger.TriggerMessageRequest{RequestedMessage: core.StatusNotificationFeatureName, ConnectorId: newInt(1)}, true},
-		{remotetrigger.TriggerMessageRequest{RequestedMessage: core.StatusNotificationFeatureName}, true},
-		{remotetrigger.TriggerMessageRequest{}, false},
-		{remotetrigger.TriggerMessageRequest{RequestedMessage: core.StatusNotificationFeatureName, ConnectorId: newInt(0)}, true},
-		{remotetrigger.TriggerMessageRequest{RequestedMessage: core.StatusNotificationFeatureName, ConnectorId: newInt(-1)}, false},
-		{remotetrigger.TriggerMessageRequest{RequestedMessage: core.StartTransactionFeatureName}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestTriggerMessageConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{remotetrigger.TriggerMessageConfirmation{Status: remotetrigger.TriggerMessageStatusAccepted}, true},
-		{remotetrigger.TriggerMessageConfirmation{Status: "invalidTriggerMessageStatus"}, false},
-		{remotetrigger.TriggerMessageConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
 
 func (suite *OcppV16TestSuite) TestTriggerMessageE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"
 	messageId := defaultMessageId
 	wsUrl := "someUrl"
-	connectorId := newInt(1)
+	connectorId := tests.NewInt(1)
 	requestedMessage := remotetrigger.MessageTrigger(core.StatusNotificationFeatureName)
 	status := remotetrigger.TriggerMessageStatusAccepted
 	requestJson := fmt.Sprintf(`[2,"%v","%v",{"requestedMessage":"%v","connectorId":%v}]`, messageId, remotetrigger.TriggerMessageFeatureName, requestedMessage, *connectorId)

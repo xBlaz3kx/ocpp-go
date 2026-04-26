@@ -6,34 +6,11 @@ import (
 
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/firmware"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/lorenzodonini/ocpp-go/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// Test
-func (suite *OcppV16TestSuite) TestUpdateFirmwareRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{firmware.UpdateFirmwareRequest{Location: "ftp:some/path", Retries: newInt(10), RetryInterval: newInt(10), RetrieveDate: types.NewDateTime(time.Now())}, true},
-		{firmware.UpdateFirmwareRequest{Location: "ftp:some/path", Retries: newInt(10), RetrieveDate: types.NewDateTime(time.Now())}, true},
-		{firmware.UpdateFirmwareRequest{Location: "ftp:some/path", RetrieveDate: types.NewDateTime(time.Now())}, true},
-		{firmware.UpdateFirmwareRequest{}, false},
-		{firmware.UpdateFirmwareRequest{Location: "ftp:some/path"}, false},
-		{firmware.UpdateFirmwareRequest{Location: "invalidUri", RetrieveDate: types.NewDateTime(time.Now())}, false},
-		{firmware.UpdateFirmwareRequest{Location: "ftp:some/path", Retries: newInt(-1), RetrieveDate: types.NewDateTime(time.Now())}, false},
-		{firmware.UpdateFirmwareRequest{Location: "ftp:some/path", RetryInterval: newInt(-1), RetrieveDate: types.NewDateTime(time.Now())}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestUpdateFirmwareConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{firmware.UpdateFirmwareConfirmation{}, true},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
 
 func (suite *OcppV16TestSuite) TestUpdateFirmwareE2EMocked() {
 	t := suite.T()
@@ -41,8 +18,8 @@ func (suite *OcppV16TestSuite) TestUpdateFirmwareE2EMocked() {
 	messageId := defaultMessageId
 	wsUrl := "someUrl"
 	location := "ftp:some/path"
-	retries := newInt(10)
-	retryInterval := newInt(600)
+	retries := tests.NewInt(10)
+	retryInterval := tests.NewInt(600)
 	retrieveDate := types.NewDateTime(time.Now())
 	requestJson := fmt.Sprintf(`[2,"%v","%v",{"location":"%v","retries":%v,"retrieveDate":"%v","retryInterval":%v}]`,
 		messageId, firmware.UpdateFirmwareFeatureName, location, *retries, retrieveDate.FormatTimestamp(), *retryInterval)

@@ -11,29 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (suite *OcppV16TestSuite) TestGetInstalledCertificateIdsRequestValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{certificates.GetInstalledCertificateIdsRequest{CertificateType: types.CentralSystemRootCertificate}, true},
-		{certificates.GetInstalledCertificateIdsRequest{}, false},
-		{certificates.GetInstalledCertificateIdsRequest{CertificateType: "invalidCertificateUse"}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-func (suite *OcppV16TestSuite) TestGetInstalledCertificateIdsConfirmationValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{certificates.GetInstalledCertificateIdsResponse{Status: certificates.GetInstalledCertificateStatusAccepted}, true},
-		{certificates.GetInstalledCertificateIdsResponse{Status: certificates.GetInstalledCertificateStatusNotFound}, true},
-		{certificates.GetInstalledCertificateIdsResponse{Status: certificates.GetInstalledCertificateStatusAccepted}, true},
-		{certificates.GetInstalledCertificateIdsResponse{}, false},
-		{certificates.GetInstalledCertificateIdsResponse{Status: "invalidGetInstalledCertificateStatus"}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-// Test
 func (suite *OcppV16TestSuite) TestGetInstalledCertificateIdsE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

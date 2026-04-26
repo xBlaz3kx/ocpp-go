@@ -11,34 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (suite *OcppV16TestSuite) TestInstallCertificateRequestValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{certificates.InstallCertificateRequest{CertificateType: types.ManufacturerRootCertificate, Certificate: "0xdeadbeef"}, true},
-		{certificates.InstallCertificateRequest{CertificateType: types.ManufacturerRootCertificate}, false},
-		{certificates.InstallCertificateRequest{CertificateType: types.CentralSystemRootCertificate, Certificate: "0xdeadbeef"}, true},
-		{certificates.InstallCertificateRequest{CertificateType: types.CentralSystemRootCertificate, Certificate: ""}, false},
-		{certificates.InstallCertificateRequest{Certificate: "0xdeadbeef"}, false},
-		{certificates.InstallCertificateRequest{}, false},
-		{certificates.InstallCertificateRequest{CertificateType: "invalidCertificateUse", Certificate: "0xdeadbeef"}, false},
-		{certificates.InstallCertificateRequest{CertificateType: types.ManufacturerRootCertificate, Certificate: newLongString(5501)}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-func (suite *OcppV16TestSuite) TestInstallCertificateConfirmationValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{certificates.InstallCertificateResponse{Status: certificates.CertificateStatusAccepted}, true},
-		{certificates.InstallCertificateResponse{Status: certificates.CertificateStatusRejected}, true},
-		{certificates.InstallCertificateResponse{Status: certificates.CertificateStatusFailed}, true},
-		{certificates.InstallCertificateResponse{}, false},
-		{certificates.InstallCertificateResponse{Status: "invalidInstallCertificateStatus"}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-// Test
 func (suite *OcppV16TestSuite) TestInstallCertificateE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

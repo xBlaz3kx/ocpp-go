@@ -10,24 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestHeartbeatRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.HeartbeatRequest{}, true},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestHeartbeatConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.HeartbeatConfirmation{CurrentTime: types.NewDateTime(time.Now())}, true},
-		{core.HeartbeatConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestHeartbeatE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

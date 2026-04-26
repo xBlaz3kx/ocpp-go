@@ -9,32 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestChangeConfigurationRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.ChangeConfigurationRequest{Key: "someKey", Value: "someValue"}, true},
-		{core.ChangeConfigurationRequest{Key: "someKey"}, false},
-		{core.ChangeConfigurationRequest{Value: "someValue"}, false},
-		{core.ChangeConfigurationRequest{}, false},
-		{core.ChangeConfigurationRequest{Key: ">50................................................", Value: "someValue"}, false},
-		{core.ChangeConfigurationRequest{Key: "someKey", Value: ">500................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................."}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestChangeConfigurationConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.ChangeConfigurationConfirmation{Status: core.ConfigurationStatusAccepted}, true},
-		{core.ChangeConfigurationConfirmation{Status: core.ConfigurationStatusRejected}, true},
-		{core.ChangeConfigurationConfirmation{Status: core.ConfigurationStatusRebootRequired}, true},
-		{core.ChangeConfigurationConfirmation{Status: core.ConfigurationStatusNotSupported}, true},
-		{core.ChangeConfigurationConfirmation{Status: "invalidConfigurationStatus"}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestChangeConfigurationE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

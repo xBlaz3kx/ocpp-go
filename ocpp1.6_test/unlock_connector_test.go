@@ -9,27 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (suite *OcppV16TestSuite) TestUnlockConnectorRequestValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{core.UnlockConnectorRequest{ConnectorId: 1}, true},
-		{core.UnlockConnectorRequest{ConnectorId: -1}, false},
-		{core.UnlockConnectorRequest{}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-func (suite *OcppV16TestSuite) TestUnlockConnectorConfirmationValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{core.UnlockConnectorConfirmation{Status: core.UnlockStatusUnlocked}, true},
-		{core.UnlockConnectorConfirmation{Status: "invalidUnlockStatus"}, false},
-		{core.UnlockConnectorConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-// Test
 func (suite *OcppV16TestSuite) TestUnlockConnectorE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

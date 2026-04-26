@@ -11,28 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestSignCertificateRequestValidation() {
-	var requestTable = []GenericTestEntry{
-		{security.SignCertificateRequest{CSR: "deadc0de", CertificateType: types.ChargingStationCert}, true},
-		{security.SignCertificateRequest{CSR: "deadc0de"}, true},
-		{security.SignCertificateRequest{}, false},
-		{security.SignCertificateRequest{CSR: "deadc0de", CertificateType: "invalidType"}, false},
-	}
-	ExecuteGenericTestTable(suite.T(), requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestSignCertificateConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{security.SignCertificateResponse{Status: types.GenericStatusAccepted}, true},
-		{security.SignCertificateResponse{Status: types.GenericStatusAccepted}, true},
-		{security.SignCertificateResponse{}, false},
-		{security.SignCertificateResponse{Status: "invalidStatus"}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestSignCertificateE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

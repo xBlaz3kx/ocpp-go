@@ -9,29 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (suite *OcppV16TestSuite) TestResetRequestValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{core.ResetRequest{Type: core.ResetTypeHard}, true},
-		{core.ResetRequest{Type: core.ResetTypeSoft}, true},
-		{core.ResetRequest{Type: "invalidResetType"}, false},
-		{core.ResetRequest{}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-func (suite *OcppV16TestSuite) TestResetConfirmationValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{core.ResetConfirmation{Status: core.ResetStatusAccepted}, true},
-		{core.ResetConfirmation{Status: core.ResetStatusRejected}, true},
-		{core.ResetConfirmation{Status: "invalidResetStatus"}, false},
-		{core.ResetConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-// Test
 func (suite *OcppV16TestSuite) TestResetE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

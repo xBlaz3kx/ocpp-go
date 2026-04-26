@@ -11,27 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestMeterValuesRequestValidation() {
-	var requestTable = []GenericTestEntry{
-		{core.MeterValuesRequest{ConnectorId: 1, TransactionId: newInt(1), MeterValue: []types.MeterValue{{Timestamp: types.NewDateTime(time.Now()), SampledValue: []types.SampledValue{{Value: "value"}}}}}, true},
-		{core.MeterValuesRequest{ConnectorId: 1, MeterValue: []types.MeterValue{{Timestamp: types.NewDateTime(time.Now()), SampledValue: []types.SampledValue{{Value: "value"}}}}}, true},
-		{core.MeterValuesRequest{MeterValue: []types.MeterValue{{Timestamp: types.NewDateTime(time.Now()), SampledValue: []types.SampledValue{{Value: "value"}}}}}, true},
-		{core.MeterValuesRequest{ConnectorId: -1, MeterValue: []types.MeterValue{{Timestamp: types.NewDateTime(time.Now()), SampledValue: []types.SampledValue{{Value: "value"}}}}}, false},
-		{core.MeterValuesRequest{ConnectorId: 1, MeterValue: []types.MeterValue{}}, false},
-		{core.MeterValuesRequest{ConnectorId: 1}, false},
-		{core.MeterValuesRequest{ConnectorId: 1, MeterValue: []types.MeterValue{{Timestamp: types.NewDateTime(time.Now()), SampledValue: []types.SampledValue{}}}}, false},
-	}
-	ExecuteGenericTestTable(suite.T(), requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestMeterValuesConfirmationValidation() {
-	var confirmationTable = []GenericTestEntry{
-		{core.MeterValuesConfirmation{}, true},
-	}
-	ExecuteGenericTestTable(suite.T(), confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestMeterValuesE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

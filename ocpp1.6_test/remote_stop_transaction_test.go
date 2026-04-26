@@ -10,28 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestRemoteStopTransactionRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.RemoteStopTransactionRequest{TransactionId: 1}, true},
-		{core.RemoteStopTransactionRequest{}, true},
-		{core.RemoteStopTransactionRequest{TransactionId: -1}, true},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestRemoteStopTransactionConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{core.RemoteStopTransactionConfirmation{Status: types.RemoteStartStopStatusAccepted}, true},
-		{core.RemoteStopTransactionConfirmation{Status: types.RemoteStartStopStatusRejected}, true},
-		{core.RemoteStopTransactionConfirmation{Status: "invalidRemoteStopTransactionStatus"}, false},
-		{core.RemoteStopTransactionConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestRemoteStopTransactionE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

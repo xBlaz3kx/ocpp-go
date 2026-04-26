@@ -9,27 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestCancelReservationRequestValidation() {
-	t := suite.T()
-	requestTable := []GenericTestEntry{
-		{reservation.CancelReservationRequest{ReservationId: 42}, true},
-		{reservation.CancelReservationRequest{}, true},
-		{reservation.CancelReservationRequest{ReservationId: -1}, true},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestCancelReservationConfirmationValidation() {
-	t := suite.T()
-	confirmationTable := []GenericTestEntry{
-		{reservation.CancelReservationConfirmation{Status: reservation.CancelReservationStatusAccepted}, true},
-		{reservation.CancelReservationConfirmation{Status: "invalidCancelReservationStatus"}, false},
-		{reservation.CancelReservationConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestCancelReservationE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

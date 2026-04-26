@@ -9,40 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestGetConfigurationRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{core.GetConfigurationRequest{Key: []string{"key1", "key2"}}, true},
-		{core.GetConfigurationRequest{Key: []string{"key1", "key2", "key3", "key4", "key5", "key6"}}, true},
-		{core.GetConfigurationRequest{Key: []string{"key1", "key2", "key2"}}, false},
-		{core.GetConfigurationRequest{}, true},
-		{core.GetConfigurationRequest{Key: []string{}}, true},
-		{core.GetConfigurationRequest{Key: []string{">50................................................"}}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestGetConfigurationConfirmationValidation() {
-	t := suite.T()
-	value1 := "value1"
-	value2 := "value2"
-	longValue := ">500................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................."
-	var confirmationTable = []GenericTestEntry{
-		{core.GetConfigurationConfirmation{ConfigurationKey: []core.ConfigurationKey{{Key: "key1", Readonly: true, Value: &value1}}}, true},
-		{core.GetConfigurationConfirmation{ConfigurationKey: []core.ConfigurationKey{{Key: "key1", Readonly: true, Value: &value1}, {Key: "key2", Readonly: false, Value: &value2}}}, true},
-		{core.GetConfigurationConfirmation{ConfigurationKey: []core.ConfigurationKey{{Key: "key1", Readonly: true, Value: &value1}}, UnknownKey: []string{"keyX"}}, true},
-		{core.GetConfigurationConfirmation{ConfigurationKey: []core.ConfigurationKey{{Key: "key1", Readonly: false, Value: &value1}}, UnknownKey: []string{"keyX", "keyY"}}, true},
-		{core.GetConfigurationConfirmation{UnknownKey: []string{"keyX"}}, true},
-		{core.GetConfigurationConfirmation{UnknownKey: []string{">50................................................"}}, false},
-		{core.GetConfigurationConfirmation{ConfigurationKey: []core.ConfigurationKey{{Key: ">50................................................", Readonly: true, Value: &value1}}}, false},
-		{core.GetConfigurationConfirmation{ConfigurationKey: []core.ConfigurationKey{{Key: "key1", Readonly: true, Value: &longValue}}}, false},
-		//{ocpp16.GetConfigurationConfirmation{ConfigurationKey: []ocpp16.ConfigurationKey{{Key: "key1", Readonly: true, Value: "value1"}, {Key: "key1", Readonly: false, Value: "value2"}}}, false},
-	}
-	//TODO: additional test cases TBD. See get_configuration.go
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestGetConfigurationE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

@@ -7,49 +7,11 @@ import (
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/securefirmware"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6_test/mocks"
+	"github.com/lorenzodonini/ocpp-go/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// Test
-func (suite *OcppV16TestSuite) TestSignedUpdateFirmwareRequestValidation() {
-	t := suite.T()
-	fw := securefirmware.Firmware{
-		Location:           "https://someurl",
-		RetrieveDateTime:   types.NewDateTime(time.Now()),
-		InstallDateTime:    types.NewDateTime(time.Now()),
-		SigningCertificate: "1337c0de",
-		Signature:          "deadc0de",
-	}
-	var requestTable = []GenericTestEntry{
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(300), RequestID: 42, Firmware: fw}, true},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RequestID: 42, Firmware: fw}, true},
-		{securefirmware.SignedUpdateFirmwareRequest{RequestID: 42, Firmware: fw}, true},
-		{securefirmware.SignedUpdateFirmwareRequest{Firmware: fw}, true},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(300), RequestID: 42, Firmware: securefirmware.Firmware{Location: "https://someurl", RetrieveDateTime: types.NewDateTime(time.Now())}}, true},
-		{securefirmware.SignedUpdateFirmwareRequest{}, false},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(-1), RetryInterval: newInt(300), RequestID: 42, Firmware: fw}, false},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(-1), RequestID: 42, Firmware: fw}, false},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(300), RequestID: -1, Firmware: fw}, false},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(300), RequestID: 42, Firmware: securefirmware.Firmware{RetrieveDateTime: types.NewDateTime(time.Now()), InstallDateTime: types.NewDateTime(time.Now()), SigningCertificate: "1337c0de", Signature: "deadc0de"}}, false},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(300), RequestID: 42, Firmware: securefirmware.Firmware{Location: "https://someurl", InstallDateTime: types.NewDateTime(time.Now()), SigningCertificate: "1337c0de", Signature: "deadc0de"}}, false},
-		{securefirmware.SignedUpdateFirmwareRequest{Retries: newInt(5), RetryInterval: newInt(300), RequestID: 42, Firmware: securefirmware.Firmware{Location: ">512.............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................", RetrieveDateTime: types.NewDateTime(time.Now()), InstallDateTime: types.NewDateTime(time.Now()), SigningCertificate: "1337c0de", Signature: "deadc0de"}}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestSignedUpdateFirmwareResponseValidation() {
-	t := suite.T()
-	var responseTable = []GenericTestEntry{
-		{securefirmware.SignedUpdateFirmwareResponse{Status: securefirmware.UpdateFirmwareStatusAccepted}, true},
-		{securefirmware.SignedUpdateFirmwareResponse{Status: securefirmware.UpdateFirmwareStatusAccepted}, true},
-		{securefirmware.SignedUpdateFirmwareResponse{Status: securefirmware.UpdateFirmwareStatusAccepted}, true},
-		{securefirmware.SignedUpdateFirmwareResponse{}, false},
-		{securefirmware.SignedUpdateFirmwareResponse{Status: "invalidFirmwareUpdateStatus"}, false},
-	}
-	ExecuteGenericTestTable(t, responseTable)
-}
 
 func (suite *OcppV16TestSuite) TestSignedUpdateFirmwareE2EMocked() {
 	t := suite.T()
@@ -63,9 +25,9 @@ func (suite *OcppV16TestSuite) TestSignedUpdateFirmwareE2EMocked() {
 		SigningCertificate: "1337c0de",
 		Signature:          "deadc0de",
 	}
-	retries := newInt(5)
+	retries := tests.NewInt(5)
 	requestID := 42
-	retryInterval := newInt(300)
+	retryInterval := tests.NewInt(300)
 	status := securefirmware.UpdateFirmwareStatusAccepted
 	requestJson := fmt.Sprintf(`[2,"%v","%v",{"retries":%v,"retryInterval":%v,"requestId":%v,"firmware":{"location":"%v","retrieveDateTime":"%v","installDateTime":"%v","signingCertificate":"%v","signature":"%v"}}]`,
 		messageId, securefirmware.SignedUpdateFirmwareFeatureName, *retries, *retryInterval, requestID, fw.Location, fw.RetrieveDateTime.FormatTimestamp(), fw.InstallDateTime.FormatTimestamp(), fw.SigningCertificate, fw.Signature)
@@ -119,9 +81,9 @@ func (suite *OcppV16TestSuite) TestSignedUpdateFirmwareInvalidEndpoint() {
 		SigningCertificate: "1337c0de",
 		Signature:          "deadc0de",
 	}
-	retries := newInt(5)
+	retries := tests.NewInt(5)
 	requestID := 42
-	retryInterval := newInt(300)
+	retryInterval := tests.NewInt(300)
 	request := securefirmware.NewSignedUpdateFirmwareRequest(requestID, fw)
 	request.Retries = retries
 	request.RetryInterval = retryInterval

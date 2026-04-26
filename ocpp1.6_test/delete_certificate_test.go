@@ -11,29 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test
-func (suite *OcppV16TestSuite) TestDeleteCertificateRequestValidation() {
-	t := suite.T()
-	var requestTable = []GenericTestEntry{
-		{certificates.DeleteCertificateRequest{CertificateHashData: types.CertificateHashData{HashAlgorithm: types.SHA256, IssuerNameHash: "hash00", IssuerKeyHash: "hash01", SerialNumber: "serial0"}}, true},
-		{certificates.DeleteCertificateRequest{}, false},
-		{certificates.DeleteCertificateRequest{CertificateHashData: types.CertificateHashData{HashAlgorithm: "invalidHashAlgorithm", IssuerNameHash: "hash00", IssuerKeyHash: "hash01", SerialNumber: "serial0"}}, false},
-	}
-	ExecuteGenericTestTable(t, requestTable)
-}
-
-func (suite *OcppV16TestSuite) TestDeleteCertificateConfirmationValidation() {
-	t := suite.T()
-	var confirmationTable = []GenericTestEntry{
-		{certificates.DeleteCertificateResponse{Status: certificates.DeleteCertificateStatusAccepted}, true},
-		{certificates.DeleteCertificateResponse{Status: certificates.DeleteCertificateStatusFailed}, true},
-		{certificates.DeleteCertificateResponse{Status: certificates.DeleteCertificateStatusNotFound}, true},
-		{certificates.DeleteCertificateResponse{Status: "invalidDeleteCertificateStatus"}, false},
-		{certificates.DeleteCertificateResponse{}, false},
-	}
-	ExecuteGenericTestTable(t, confirmationTable)
-}
-
 func (suite *OcppV16TestSuite) TestDeleteCertificateE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"

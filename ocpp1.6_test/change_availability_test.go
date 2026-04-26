@@ -9,32 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (suite *OcppV16TestSuite) TestChangeAvailabilityRequestValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{core.ChangeAvailabilityRequest{ConnectorId: 0, Type: core.AvailabilityTypeOperative}, true},
-		{core.ChangeAvailabilityRequest{ConnectorId: 0, Type: core.AvailabilityTypeInoperative}, true},
-		{core.ChangeAvailabilityRequest{ConnectorId: 0}, false},
-		{core.ChangeAvailabilityRequest{Type: core.AvailabilityTypeOperative}, true},
-		{core.ChangeAvailabilityRequest{Type: "invalidAvailabilityType"}, false},
-		{core.ChangeAvailabilityRequest{ConnectorId: -1, Type: core.AvailabilityTypeOperative}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-func (suite *OcppV16TestSuite) TestChangeAvailabilityConfirmationValidation() {
-	t := suite.T()
-	var testTable = []GenericTestEntry{
-		{core.ChangeAvailabilityConfirmation{Status: core.AvailabilityStatusAccepted}, true},
-		{core.ChangeAvailabilityConfirmation{Status: core.AvailabilityStatusRejected}, true},
-		{core.ChangeAvailabilityConfirmation{Status: core.AvailabilityStatusScheduled}, true},
-		{core.ChangeAvailabilityConfirmation{Status: "invalidAvailabilityStatus"}, false},
-		{core.ChangeAvailabilityConfirmation{}, false},
-	}
-	ExecuteGenericTestTable(t, testTable)
-}
-
-// Test
 func (suite *OcppV16TestSuite) TestChangeAvailabilityE2EMocked() {
 	t := suite.T()
 	wsId := "test_id"
