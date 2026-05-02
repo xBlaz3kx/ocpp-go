@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/agrison/go-commons-lang v0.0.0-20240106075236-2e001e6401ef
-	github.com/caarlos0/env/v11 v11.4.0
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
