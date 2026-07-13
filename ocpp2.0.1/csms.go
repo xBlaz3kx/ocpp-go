@@ -829,6 +829,11 @@ func (cs *csms) Start(listenPort int, listenPath string) {
 
 func (cs *csms) Stop() {
 	cs.server.Stop()
+
+	if cs.errC != nil {
+		close(cs.errC)
+		cs.errC = nil
+	}
 }
 
 func (cs *csms) sendResponse(chargingStationID string, response ocpp.Response, err error, requestId string) {
