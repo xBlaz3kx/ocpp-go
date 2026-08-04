@@ -393,7 +393,7 @@ func (s *server) GetChannel(websocketId string) (Channel, bool) {
 
 func (s *server) stopConnections() {
 	s.connMutex.Lock()
-	defer s.connMutex.Lock()
+	defer s.connMutex.Unlock()
 
 	for _, conn := range s.connections {
 		err := conn.Close(websocket.CloseError{Code: websocket.CloseNormalClosure, Text: ""})
